@@ -2,12 +2,8 @@
 // ###### Offer ######
 /*
     TODO:
-        --> Reformat FLIGHT div so that it represents the inital source 
-            and final destination (sum up hours, so that the timeline
-            is correct, show all airlines, have popup to show intermediate 
-            flights).
-                --> Create popup when offer is clicked, popup should include
-                    more details about flight (info from slices/offers/etc..)
+        --> Create popup when offer is clicked, popup should include
+            more details about flight (info from slices/offers/etc..)
 
         --> Reformat PRICE button so that it represents flights shown
             --> SHOW CURRENCY (important)
@@ -223,7 +219,8 @@ class Offer_request
                     $destination_iata_code = array();
                     $departing_at = array();
                     $arriving_at = array();
-                    $total_amount = ""; // currency - EUR
+                    $total_amount = "";
+                    $total_currency = "";
                     $airline = array();
                     // ---    ####    ---
                     foreach ($v1 as $k2 => $v2) {
@@ -261,8 +258,10 @@ class Offer_request
                                     }
                                 }
                             }
+                        } else if ($k2 === "total_currency") {
+                            $total_currency = $v2;
                         } else if ($k2 === "total_amount") {
-                            $total_amount = $v2;
+                            $total_amount = $v2 . $total_currency;
                         }
                     }
                     $count++;
