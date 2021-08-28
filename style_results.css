@@ -1,0 +1,83 @@
+.center{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.vcenter{
+  display:flex;
+  align-items:center;
+}
+.flightResults{
+  width:90%;
+  margin:0 auto;
+}
+.flightResult{
+  width: -moz-fit-content;
+  width: fit-content;
+  height:7.5em;
+  margin-top : 16px;
+  padding:2em;
+  box-shadow:0 0 10px #2323;
+}
+.label{
+  font-size:10px;
+  letter-spacing:3px;
+  padding:4px 0;
+  color:#bdc3c7;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+.flightsBt {
+  background: transparent;
+  font-size: 11px; 
+  line-height: 14px; 
+  margin-top: 2em;
+  padding: 3px; 
+  border-radius: 22px; 
+  border: 2px solid; 
+  display: inline-block;
+  cursor: pointer;
+}
+.value{
+  font-size: medium;
+  letter-spacing:2px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+#price {
+  font-size: 14px;
+  word-wrap: unset;
+}
+.infoDiv{
+  width:7.5em;
+  padding-left:12px;
+}
+#airlines {
+  word-wrap: break-word;
+}
+.flightDisplay {
+  margin-left: -2.2em;
+}
+#priceDiv {
+ margin-left: 1em;
+ padding: 0.8em;
+ width: 5em;
+ cursor: pointer;
+}
+.timeline{
+  width:150px;
+}
+.symbol{
+  height:40px;
+  border-bottom:2px solid;
+}
+.symbol > img{
+  height:25px;
+}
+.duration{
+  padding:10px;
+  font-size:14px;
+  letter-spacing:3px;
+}
