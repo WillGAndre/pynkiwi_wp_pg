@@ -5,10 +5,7 @@
         --> Create popup when offer is clicked, popup should include
             more details about flight (info from slices/offers/etc..)
 
-        --> Reformat PRICE button so that it represents flights shown
-            --> SHOW CURRENCY (important)
-            --> Verify passengers and children age
-            --> Add payment
+        --> Add payment
 */
 
 class Offer
@@ -40,7 +37,7 @@ class Offer
     }
 
     public function print_html()
-    {  // Link CSS to this code: https://pynkiwi.wpcomstaging.com/wp-content/uploads/custom-css-js/2112.css
+    { 
 
         $trips = count($this->source_iata_code);
         if ($this->flight_class == "Premium_Economy") {
@@ -60,7 +57,7 @@ class Offer
                         console.log(document.getElementById("flightResults"));
                     });
             </script>';
-        } else {    // CSS --> https://pynkiwi.wpcomstaging.com/wp-content/uploads/custom-css-js/2121.css
+        } else {
             $departing_time = substr($this->departing_at[0], 11, 5);
 
             $airlines = $this->get_airlines_div(array_unique($this->airline));
@@ -272,6 +269,10 @@ class Offer_request
                         break;
                     }
                 }
+            } else if ($tag === "passengers") {
+                // Passengers info
+                // ### Debug:
+                //var_dump($content);
             } else if ($tag === "id") {
                 $this->offer_request_id = $content;
             }
@@ -343,14 +344,27 @@ class Passengers
         $this->age_arr = array();
     }
 
-    // TODO: Add support for children (specify age, 1-14 or 14-18)
-    public function add_passenger($adults, $children)
-    {
-        $this->json_age = new stdClass();
+    public function add_passenger($adults, $children, $children_age)
+    {        
         if (!empty($adults)) {
-            $this->json_age->age = 18;
             while ($adults--) {
+                $this->json_age = new stdClass();
+                $this->json_age->age = 18;
                 array_push($this->age_arr, $this->json_age);
+            }
+        }
+        if (!empty($children)) {
+            $index = 0;
+            while($children--) {
+                $age = intval(substr($children_age, $index, 2)); // ex: 12, 14
+                if ($age < 1 || $age > 18) {
+                    alert('Children Age not valid, format ex: 12, 14, 17.');
+                    exit(0);
+                }
+                $this->json_age = new stdClass();
+                $this->json_age->age = $age;
+                array_push($this->age_arr, $this->json_age);
+                $index += 4;
             }
         }
     }
