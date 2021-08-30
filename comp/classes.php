@@ -5,7 +5,19 @@
         --> Create popup when offer is clicked, popup should include
             more details about flight (info from slices/offers/etc..)
 
+            -> In order to do this, another class / data structure
+               should be passed in also as argument. This data structure
+               should include information relevant to the specific flight 
+               (airport origin/destination terminal, etc).
+
+               ("offers" -> "slices" -> "segments" (array in which each index reprsents a flight) -> "flight info")
+               For each segment in offer, get flight information.
+
+
         --> Add payment
+
+            -> Before payment passenger info should be double checked
+               with information received from walk_data().
 */
 
 class Offer
@@ -58,27 +70,30 @@ class Offer
                     });
             </script>';
         } else {
+            $div_id = rand();
+            $flight_tag = rand();
             $departing_time = substr($this->departing_at[0], 11, 5);
-
             $airlines = $this->get_airlines_div(array_unique($this->airline));
-            $middle_flights = $this->get_intermediate_flights();
+            $middle_flights = $this->get_intermediate_flights($flight_tag);
+            $middle_flights_scripts = $this->get_intermediate_flights_scripts($flight_tag);
 
             console_log('Printing flight from: ' . IATA_FROM . '  to  ' . IATA_TO);
-            $rand = rand();
 
             echo
             '<link rel="stylesheet" href="./style_results.css">
             <script>
-                    function showDiv' . $rand . '() {
-                        let elem = document.getElementById("subflight' . $rand . '");
+                    function showDiv' . $div_id . '() {
+                        let elem = document.getElementById("subflight' . $div_id . '");
                         elem.style.display == "block" ? elem.style.display = "none" : elem.style.display = "block"; 
                     }
 
                     document.addEventListener("DOMContentLoaded", function(event) {
-                        document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\'><div id=\'airlines\' class=\'flightNo infoDiv\'>' . $airlines . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . IATA_FROM . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'center\'><input class=\'flightsBt\' type=\'button\' name=\'answer\' value=\'Show Flights\' onclick=\'showDiv' . $rand . '()\' /></div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . IATA_TO . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><div id=\'priceDiv\' class=\'flightInfo infoDiv\' onclick=\'#\'><div class=\'label\'>PRICE</div><div id=\'price\' class=\'value\'>' . $this->flight_price . '</div></div></div><div id=\'subflight' . $rand . '\' class=\'flightResults\' style=\'display:none; margin-left: 2.6em; width: -moz-fit-content; width: fit-content;\'>' . $middle_flights . '</div>";
+                        document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\'><div id=\'airlines\' class=\'flightNo infoDiv\'>' . $airlines . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . IATA_FROM . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'center\'><input class=\'flightsBt\' type=\'button\' name=\'answer\' value=\'Show Flights\' onclick=\'showDiv' . $div_id . '()\' /></div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . IATA_TO . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><div id=\'priceDiv\' class=\'flightInfo infoDiv\' onclick=\'#\'><div class=\'label\'>PRICE</div><div id=\'price\' class=\'value\'>' . $this->flight_price . '</div></div></div><div id=\'subflight' . $div_id . '\' class=\'flightResults\' style=\'display:none; margin-left: 2.6em; width: -moz-fit-content; width: fit-content;\'>' . $middle_flights . '</div>";
                         console.log(document.getElementById("flightResults"));
-                        console.log(document.getElementById("subflight' . $rand . '"));
+                        console.log(document.getElementById("subflight' . $div_id . '"));
                     });
+
+                    ' . $middle_flights_scripts . '
             </script>';
         }
     }
@@ -103,14 +118,31 @@ class Offer
         return $div;
     }
 
-    private function get_intermediate_flights()
+    private function get_intermediate_flights($flight_tag)
     {
         $div = "";
         $index = 0;
         while (count($this->source_iata_code) !== $index) {
             $departing_time = substr($this->departing_at[$index], 11, 5);
             $flight_duration = $this->get_flight_duration($this->departing_at[$index], $this->arriving_at[$index]);
-            $div = $div . '<div class=\'flightResult vcenter\'><div class=\'flightNo infoDiv\'><div class=\'value\'>' . $this->airline[$index] . '</div></div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[$index] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div></div>';
+            $flight_id = $flight_tag . '_' . $index;
+            $flight_info_id = $flight_id . '_c';
+            $div = $div . '<div id=\'flight' . $flight_id . '\' class=\'flightResult vcenter\' style=\'cursor: pointer;\'><div class=\'flightNo infoDiv\'><div class=\'value\'>' . $this->airline[$index] . '</div></div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[$index] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div></div><div id=\'flight' . $flight_info_id . '\' class=\'flightResultInfo vcenter\' style=\'display: none; cursor: pointer;\'><div class=\'flightInfo infoDiv\'><div class=\'labelc\'>DEP. DATE</div><div class=\'valuec\'>dd/mm/yyyy</div></div><div class=\'flightInfo infoDiv\'><div class=\'labelc\'>NAME</div><div class=\'valuec\'>Heathrow</div><div class=\'labelc\'>TERMINAL</div><div class=\'valuec\'>B</div></div><div class\'timeline\'></div><div class=\'flightInfo infoDiv\'><div class=\'labelc\'>NAME</div><div class=\'valuec\'>Heathrow</div><div class=\'labelc\'>TERMINAL</div><div class=\'valuec\'>B</div></div><div class=\'flightInfo infoDiv\'><div class=\'labelc\'>DEP. DATE</div><div class=\'valuec\'>dd/mm/yyyy</div></div></div>';
+            $index++;
+        }
+        return $div;
+    }
+
+    private function get_intermediate_flights_scripts($flight_tag) 
+    {
+        //  Subflight ID -> $flight_tag_$index
+        //  Subflight Info ID -> $flight_tag_$index_c
+        $div = "";
+        $index = 0;
+        while (count($this->source_iata_code) !== $index) {
+            $flight_id = $flight_tag . '_' . $index;
+            $flight_info_id = $flight_id . '_c';
+            $div = $div . 'document.addEventListener("DOMContentLoaded", function() { document.getElementById("flight' . $flight_id . '").addEventListener("click", function() {document.getElementById("flight' . $flight_id . '").style.display = "none"; document.getElementById("flight' . $flight_info_id . '").style.display = "flex";}); document.getElementById("flight' . $flight_info_id . '").addEventListener("click", function() {document.getElementById("flight' . $flight_id . '").style.display = "flex"; document.getElementById("flight' . $flight_info_id . '").style.display = "none";});});';
             $index++;
         }
         return $div;
@@ -121,6 +153,8 @@ class Offer
 /*
     TODO:
         --> Error Handeling
+        --> Before payment passenger info should be double checked
+            with information received from walk_data().
 */
 class Offer_request
 {
@@ -150,6 +184,10 @@ class Offer_request
             )
         );
         return json_encode($post_data);
+    }
+
+    public function get_offer_request_id() {
+        return $this->offer_request_id;
     }
 
     /**
@@ -205,7 +243,7 @@ class Offer_request
         // ---  ####  ---
 
         foreach ($data as $tag => $content) {
-            if ($tag === "slices") { //                         <-----  POPUP INFO 
+            if ($tag === "slices") {                         
                 // General airport info
                 continue;
             } else if ($tag === "offers") { // Refactor when done

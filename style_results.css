@@ -81,3 +81,32 @@
   font-size:14px;
   letter-spacing:3px;
 }
+
+.flightResultInfo {
+  width: -moz-fit-content;
+  width: fit-content;
+  height:7.5em;
+  margin-top : 16px;
+  padding:2em;
+  box-shadow:0 0 10px #2323;
+  background: #5b2a4d;
+}
+
+.labelc{
+  font-size:10px;
+  letter-spacing:3px;
+  padding:4px 0;
+  color:#ffffff;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.valuec{
+  margin-bottom: 0.5em;
+  letter-spacing:2px;
+  display:flex;
+  color: #f6eded;
+  justify-content:center;
+  align-items:center;
+}
