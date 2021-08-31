@@ -2,18 +2,6 @@
 // ###### Offer ######
 /*
     TODO:
-        --> Create popup when offer is clicked, popup should include
-            more details about flight (info from slices/offers/etc..)
-
-            -> In order to do this, another class / data structure
-               should be passed in also as argument. This data structure
-               should include information relevant to the specific flight 
-               (airport origin/destination terminal, etc).
-
-               ("offers" -> "slices" -> "segments" (array in which each index reprsents a flight) -> "flight info")
-               For each segment in offer, get flight information.
-
-
         --> Add payment
 
             -> Before payment passenger info should be double checked
@@ -108,6 +96,19 @@ class Offer
                     ' . $middle_flights_scripts . '
             </script>';
         }
+    }
+
+    public function compare_airline($input_airline) 
+    {
+        $index = 0;
+        while($index < count($this->airline)) {
+            // console_log('Offer airline: ' . $this->airline[$index]);
+            if ($this->airline[$index] !== $input_airline) {
+                return 0;
+            }
+            $index++;
+        }
+        return 1;
     }
 
     private function get_flight_duration($departing_at, $arriving_at)

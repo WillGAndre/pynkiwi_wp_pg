@@ -38,6 +38,8 @@ if (isset($_POST['hidden_submit'])) {
     $children_age = $_POST['children-age'];
     $cabin_class = $_POST['class-type'];
 
+    $airline_name = $_POST['airline-name'];
+
     if (empty($from_text) || empty($to_text) || empty($first_date)) {
         alert('Information missing');
         exit(0);
@@ -86,6 +88,9 @@ if (isset($_POST['hidden_submit'])) {
     $offer_request = new Offer_request($slices_list, $passengers_list, $cabin_class);
     $offers = $offer_request->get_offer_request();
     foreach ($offers as $index => $offer) {
-        $offer->print_html();
+        if ($airline_name === "None" || $offer->compare_airline($airline_name)) {
+            // console_log("Input airline name: " . $airline_name);
+            $offer->print_html();
+        }
     }
 }
