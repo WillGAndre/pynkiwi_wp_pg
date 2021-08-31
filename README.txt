@@ -9,11 +9,13 @@
   * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
 **/
 		
+    Wordpress plugin that integrates Duffel's api for flight searching and booking.
+
 		- index.php
 
 
-	Components:
-	
-		- comp/aux.php      - Auxiliary functions
+    Components:
+    
+      - comp/aux.php      - Auxiliary functions
 
-		- comp/classes.php  - Classes
+      - comp/classes.php  - Classes
