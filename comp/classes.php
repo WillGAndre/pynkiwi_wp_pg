@@ -23,7 +23,11 @@
 class Offer
 {
     private $source_iata_code;
+    private $source_airport;
+    private $source_terminal;
     private $destination_iata_code;
+    private $destination_airport;
+    private $destination_terminal;
     private $departing_at;  // Date and Time
     private $arriving_at;
     private $flight_class;
@@ -32,7 +36,11 @@ class Offer
 
     public function __construct(
         $source_iata_code,
+        $source_airport,
+        $source_terminal,
         $destination_iata_code,
+        $destination_airport,
+        $destination_terminal,
         $departing_at,
         $arriving_at,
         $flight_class,
@@ -40,7 +48,11 @@ class Offer
         $airline
     ) {
         $this->source_iata_code = $source_iata_code;
+        $this->source_airport = $source_airport;
+        $this->source_terminal = $source_terminal;
         $this->destination_iata_code = $destination_iata_code;
+        $this->destination_airport = $destination_airport;
+        $this->destination_terminal = $destination_terminal;
         $this->departing_at = $departing_at;
         $this->arriving_at = $arriving_at;
         $this->flight_class = $flight_class;
@@ -123,11 +135,14 @@ class Offer
         $div = "";
         $index = 0;
         while (count($this->source_iata_code) !== $index) {
+            $departing_date = substr($this->departing_at[$index], 0, 10);
             $departing_time = substr($this->departing_at[$index], 11, 5);
+            $arriving_date = substr($this->arriving_at[$index], 0, 10);
+            $arriving_time = substr($this->arriving_at[$index], 11, 5);
             $flight_duration = $this->get_flight_duration($this->departing_at[$index], $this->arriving_at[$index]);
             $flight_id = $flight_tag . '_' . $index;
             $flight_info_id = $flight_id . '_c';
-            $div = $div . '<div id=\'flight' . $flight_id . '\' class=\'flightResult vcenter\' style=\'cursor: pointer;\'><div class=\'flightNo infoDiv\'><div class=\'value\'>' . $this->airline[$index] . '</div></div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[$index] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div></div><div id=\'flight' . $flight_info_id . '\' class=\'flightResultInfo vcenter\' style=\'display: none; cursor: pointer;\'><div class=\'flightInfo infoDiv\'><div class=\'labelc\'>DEP. DATE</div><div class=\'valuec\'>dd/mm/yyyy</div></div><div class=\'flightInfo infoDiv\'><div class=\'labelc\'>NAME</div><div class=\'valuec\'>Heathrow</div><div class=\'labelc\'>TERMINAL</div><div class=\'valuec\'>B</div></div><div class\'timeline\'></div><div class=\'flightInfo infoDiv\'><div class=\'labelc\'>NAME</div><div class=\'valuec\'>Heathrow</div><div class=\'labelc\'>TERMINAL</div><div class=\'valuec\'>B</div></div><div class=\'flightInfo infoDiv\'><div class=\'labelc\'>DEP. DATE</div><div class=\'valuec\'>dd/mm/yyyy</div></div></div>';
+            $div = $div . '<div id=\'flight' . $flight_id . '\' class=\'flightResult vcenter\' style=\'cursor: pointer;\'><div class=\'flightNo infoDiv\'><div class=\'value\'>' . $this->airline[$index] . '</div></div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[$index] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div></div><div id=\'flight' . $flight_info_id . '\' class=\'flightResultInfo vcenter\' style=\'display: none; cursor: pointer;\'><div id=\'set-left\' class=\'flightInfo infoDiv\'><div class=\'labelc\'>DEP. DATE</div><div class=\'valuec\'>' . $departing_date . '</div><div class=\'labelc\'>DEP. TIME</div><div class=\'valuec\'>' . $departing_time . '</div></div><div class=\'location infoDiv\'><div class=\'labelc\'>TERMINAL</div><div class=\'valuec\'>' . $this->source_terminal[$index] . '</div><div class=\'valuec\'>' . $this->source_airport[$index] . '</div></div><div class=\'location infoDiv\'><div class=\'labelc\'>TERMINAL</div><div class=\'valuec\'>' . $this->destination_terminal[$index] . '</div><div class=\'valuec\'>' . $this->destination_airport[$index] . '</div></div><div id=\'set-right\' class=\'flightInfo infoDiv\'><div class=\'labelc\'>ARR. DATE</div><div class=\'valuec\'>' . $arriving_date . '</div><div class=\'labelc\'>ARR. TIME</div><div class=\'valuec\'>' . $arriving_time . '</div></div></div>';
             $index++;
         }
         return $div;
@@ -251,7 +266,11 @@ class Offer_request
                 foreach ($content as $_ => $v1) {
                     // ### Offer Data ###
                     $source_iata_code = array();
+                    $source_airport = array();
+                    $source_terminal = array();
                     $destination_iata_code = array();
+                    $destination_airport = array();
+                    $destination_terminal = array();
                     $departing_at = array();
                     $arriving_at = array();
                     $total_amount = "";
@@ -265,15 +284,23 @@ class Offer_request
                                     if ($k4 === "segments") {
                                         foreach ($v4 as $_ => $v5) {
                                             foreach ($v5 as $k6 => $v6) {
-                                                if ($k6 === "origin") {
+                                                if ($k6 === "origin_terminal") {
+                                                    array_push($source_terminal, $v6);
+                                                } else if ($k6 === "origin") {
                                                     foreach ($v6 as $k7 => $v7) {
-                                                        if ($k7 === "iata_code") {
+                                                        if ($k7 === "name") {
+                                                            array_push($source_airport, $v7);
+                                                        } else if ($k7 === "iata_code") {
                                                             array_push($source_iata_code, $v7);
                                                         }
                                                     }
+                                                } else if ($k6 === "destination_terminal") {
+                                                    array_push($destination_terminal, $v6);
                                                 } else if ($k6 === "destination") {
                                                     foreach ($v6 as $k7 => $v7) {
-                                                        if ($k7 === "iata_code") {
+                                                        if ($k7 === "name") {
+                                                            array_push($destination_airport, $v7);
+                                                        } else if ($k7 === "iata_code") {
                                                             array_push($destination_iata_code, $v7);
                                                         }
                                                     }
@@ -300,7 +327,10 @@ class Offer_request
                         }
                     }
                     $count++;
-                    $offer = $this->create_offer($source_iata_code, $destination_iata_code, $departing_at, $arriving_at, $airline, $total_amount);
+                    $offer = $this->create_offer($source_iata_code, $source_airport, $source_terminal, 
+                        $destination_iata_code, $destination_airport, $destination_terminal, 
+                        $departing_at, $arriving_at, $airline, $total_amount
+                    );
                     array_push($this->offers, $offer);
                     if ($count === self::MAX_OFFERS) {
                         console_log('Reached max offers');
@@ -319,7 +349,7 @@ class Offer_request
         return $this->offers;
     }
 
-    private function create_offer($source_iata_code, $destination_iata_code, $departing_at, $arriving_at, $airline, $total_amount)
+    private function create_offer($source_iata_code, $source_airport, $source_terminal, $destination_iata_code, $destination_airport, $destination_terminal, $departing_at, $arriving_at, $airline, $total_amount)
     {
         $size_arr = count($source_iata_code);
         if (
@@ -333,7 +363,11 @@ class Offer_request
 
         return new Offer(
             $source_iata_code,
+            $source_airport,
+            $source_terminal,
             $destination_iata_code,
+            $destination_airport,
+            $destination_terminal,
             $departing_at,
             $arriving_at,
             $this->cabin_class,

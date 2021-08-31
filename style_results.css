@@ -16,7 +16,7 @@
   width: fit-content;
   height:7.5em;
   margin-top : 16px;
-  padding:2em;
+  padding: 2em;
   box-shadow:0 0 10px #2323;
 }
 .label{
@@ -39,6 +39,9 @@
   display: inline-block;
   cursor: pointer;
 }
+.flightsBt:hover {
+  color:#5b2a4d;
+}
 .value{
   font-size: medium;
   letter-spacing:2px;
@@ -48,7 +51,7 @@
 }
 #price {
   font-size: 14px;
-  word-wrap: unset;
+  word-wrap: break-word;
 }
 .infoDiv{
   width:7.5em;
@@ -66,7 +69,7 @@
  width: 5em;
  cursor: pointer;
 }
-.timeline{
+.timeline {
   width:150px;
 }
 .symbol{
@@ -85,6 +88,7 @@
 .flightResultInfo {
   width: -moz-fit-content;
   width: fit-content;
+  min-width: 786px;
   height:7.5em;
   margin-top : 16px;
   padding:2em;
@@ -96,17 +100,28 @@
   font-size:10px;
   letter-spacing:3px;
   padding:4px 0;
-  color:#ffffff;
+  color:#bdc3c7;
   display:flex;
   justify-content:center;
   align-items:center;
 }
 
 .valuec{
+  font-size:medium;
+  font-size: 0.8vw;
   margin-bottom: 0.5em;
   letter-spacing:2px;
-  display:flex;
   color: #f6eded;
+  display:flex;
   justify-content:center;
   align-items:center;
 }
+
+#set-left {
+  margin-left: 2.65em;
+}
+
+#set-right {
+  margin-right: 2.65em;
+}
+
