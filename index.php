@@ -26,6 +26,7 @@ include_once(plugin_dir_path(__FILE__) . 'comp/aux.php');
 // Classes - Slices, Passengers, Offer Request, Offers
 include_once(plugin_dir_path(__FILE__) . 'comp/classes.php');
 
+$offers = array();
 
 // (isset($_POST['hidden_submit']))
 if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
@@ -64,7 +65,7 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     // $iata_code_to = get_iata_code($geo_arr_to[0], $geo_arr_to[1]);
 
     $iata_code_from = 'OPO';
-    $iata_code_to = 'MAD';
+    $iata_code_to = 'MAD'; // YYZ
 
     // Define constants
     define("IATA_FROM", $iata_code_from);
@@ -95,10 +96,8 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
             $offer->print_html();
         }
     }
-} else if ($_POST['flight-price'] === "PAYMENT") {
-    alert('PRICE div3');
-} 
+}
 
 if (isset($_POST['flight-price'])) {
-    alert('PRICE div4');
+    alert($_POST['offer_submit']);
 }

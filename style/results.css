@@ -58,7 +58,9 @@
   padding-left:12px;
 }
 #airlines {
-  word-wrap: break-word;
+  display: flex; 
+  justify-content: left; 
+  margin-right: -1.2em;
 }
 .flightDisplay {
   margin-left: -2.2em;
@@ -130,4 +132,5 @@
   cursor: pointer;
   word-wrap: break-word;
   white-space: normal;
+  font-size: small;
 }

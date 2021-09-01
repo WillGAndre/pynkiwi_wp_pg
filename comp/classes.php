@@ -4,12 +4,26 @@
     TODO:
         --> Add payment
 
+            -> On payment button click open up html page.
+
+                Use offer ID to get updated offer (on button clicked),
+                then double check passenger info (input and returned by
+                duffel), show legal notices (*1), get total_amount/
+                total_currency and open a form for passenger info input 
+                (email, phone num, etc, ..), this also inculdes passenger_id
+                (returned by duffel in specific Offer).
+
+                *1 - https://help.duffel.com/hc/en-gb/articles/360021056640
+
             -> Before payment passenger info should be double checked
                with information received from walk_data().
 */
 
 class Offer
 {
+    private $offer_id;
+    private $ttl;
+
     private $source_iata_code;
     private $source_airport;
     private $source_terminal;
@@ -23,6 +37,8 @@ class Offer
     private $airline;
 
     public function __construct(
+        $offer_id,
+        $ttl,
         $source_iata_code,
         $source_airport,
         $source_terminal,
@@ -35,6 +51,8 @@ class Offer
         $flight_price,
         $airline
     ) {
+        $this->offer_id = $offer_id;
+        $this->ttl = $ttl;
         $this->source_iata_code = $source_iata_code;
         $this->source_airport = $source_airport;
         $this->source_terminal = $source_terminal;
@@ -56,6 +74,7 @@ class Offer
             $this->flight_class = "P.Economy";
         }
         if ($trips === 1) {
+            $airline = $this->get_airlines_div($this->airline);
             $departing_time = substr($this->departing_at[0], 11, 5);
             $flight_duration = $this->get_flight_duration($this->departing_at[0], $this->arriving_at[0]);
 
@@ -65,7 +84,7 @@ class Offer
             '<link rel="stylesheet" href="./style_results.css">
             <script>
                     document.addEventListener("DOMContentLoaded", function(event) {
-                        document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\'><div class=\'flightNo infoDiv\'><div class=\'value\'>' . $this->airline[0] . '</div></div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[0] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[0] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'PRICE ' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /></div></form></div>";
+                        document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\'><div class=\'flightNo infoDiv\'>' . $airline . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[0] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[0] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'></div></form></div>";
                         console.log(document.getElementById("flightResults"));
                     });
             </script>';
@@ -87,13 +106,13 @@ class Offer
                         elem.style.display == "block" ? elem.style.display = "none" : elem.style.display = "block"; 
                     }
 
+                    ' . $middle_flights_scripts . '
+
                     document.addEventListener("DOMContentLoaded", function(event) {
-                        document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\'><div id=\'airlines\' class=\'flightNo infoDiv\'>' . $airlines . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . IATA_FROM . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'center\'><input class=\'flightsBt\' type=\'button\' name=\'answer\' value=\'Show Flights\' onclick=\'showDiv' . $div_id . '()\' /></div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . IATA_TO . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'PRICE ' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /></div></form></div><div id=\'subflight' . $div_id . '\' class=\'flightResults\' style=\'display:none; margin-left: 2.6em; width: -moz-fit-content; width: fit-content;\'>' . $middle_flights . '</div>";
+                        document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\'><div id=\'airlines\' class=\'flightNo infoDiv\'>' . $airlines . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . IATA_FROM . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'center\'><input class=\'flightsBt\' type=\'button\' name=\'answer\' value=\'Show Flights\' onclick=\'showDiv' . $div_id . '()\' /></div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . IATA_TO . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'></div></form></div><div id=\'subflight' . $div_id . '\' class=\'flightResults\' style=\'display:none; margin-left: 2.6em; width: -moz-fit-content; width: fit-content;\'>' . $middle_flights . '</div>";
                         console.log(document.getElementById("flightResults"));
                         console.log(document.getElementById("subflight' . $div_id . '"));
                     });
-
-                    ' . $middle_flights_scripts . '
             </script>';
         }
     }
@@ -125,10 +144,74 @@ class Offer
     private function get_airlines_div($airlines)
     {
         $div = "";
-        while (count($airlines) !== 0) {
-            $div = $div . '<div class=\'value\'>' . array_pop($airlines) . '</div>';
+        while (count($airlines) !== 0) { 
+            $airline = array_pop($airlines);    // https://pynkiwi.wpcomstaging.com/wp-content/uploads/2021/09/' . $airline_logo_name . '.png
+            $airline_logo_name = $this->get_airline_logo_name($airline);
+            
+            if ($airline_logo_name !== '') {
+                $img_tag = '<img title=\'' . $airline . '\' height=\'24px\' width=\'24px\' src=\'https://pynkiwi.wpcomstaging.com/wp-content/uploads/2021/09/' . $airline_logo_name . '.png\'>';
+                $div = $div . $img_tag;
+            }
         }
         return $div;
+    }
+
+    private function get_airline_logo_name($airline) {
+        switch ($airline) {
+            case 'Duffel Airways':
+                return 'ZZ';
+            case 'Aegean Airlines':
+                return 'A3';
+            case 'Olympic Air':
+                return 'OA';
+            case 'American Airlines':
+                return 'AA';
+            case 'British Airways':
+                return 'BA';
+            case 'Copa Airlines':
+                return 'CM';
+            case 'easyjet':
+                return 'U2';
+            case 'Iberia':
+                return 'IB';
+            case 'Iberia Airlines':
+                return 'IB';
+            case 'Air Nostrum':
+                return 'IB';
+            case 'Iberia Express':
+                return 'I2';
+            case 'Lufthansa':
+                return 'LH';
+            case 'SWISS':
+                return 'LX';
+            case 'Westjet':
+                return 'WS';
+            case 'Vueling':
+                return 'VY';
+            case 'Level':
+                return 'LV';
+            case 'Transavia':
+                return 'TO';
+            case 'Singapore Airlines':
+                return 'SQ';
+            case 'Qatar Airways':
+                return 'QR';
+            case 'Austrian':
+                return 'OS';
+            case 'Brussels Airlines':
+                return 'SN';
+            case 'Eurowings Discover':
+                return '4Y';
+            case 'Hahn Air':
+                return 'HR';
+            case 'Aer Lingus':
+                return 'EL';
+            case 'Turkish Airlines':
+                return 'TK';
+            default:
+                console_log('Airline Logo name not found');
+                return '';
+        }
     }
 
     private function get_intermediate_flights($flight_tag)
@@ -143,7 +226,7 @@ class Offer
             $flight_duration = $this->get_flight_duration($this->departing_at[$index], $this->arriving_at[$index]);
             $flight_id = $flight_tag . '_' . $index;
             $flight_info_id = $flight_id . '_c';
-            $div = $div . '<div id=\'flight' . $flight_id . '\' class=\'flightResult vcenter\' style=\'cursor: pointer;\'><div class=\'flightNo infoDiv\'><div class=\'value\'>' . $this->airline[$index] . '</div></div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[$index] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div></div><div id=\'flight' . $flight_info_id . '\' class=\'flightResultInfo vcenter\' style=\'display: none; cursor: pointer;\'><div id=\'set-left\' class=\'flightInfo infoDiv\'><div class=\'labelc\'>DEP. DATE</div><div class=\'valuec\'>' . $departing_date . '</div><div class=\'labelc\'>DEP. TIME</div><div class=\'valuec\'>' . $departing_time . '</div></div><div class=\'location infoDiv\'><div class=\'labelc\'>TERMINAL</div><div class=\'valuec\'>' . $this->source_terminal[$index] . '</div><div class=\'valuec\'>' . $this->source_airport[$index] . '</div></div><div class=\'location infoDiv\'><div class=\'labelc\'>TERMINAL</div><div class=\'valuec\'>' . $this->destination_terminal[$index] . '</div><div class=\'valuec\'>' . $this->destination_airport[$index] . '</div></div><div id=\'set-right\' class=\'flightInfo infoDiv\'><div class=\'labelc\'>ARR. DATE</div><div class=\'valuec\'>' . $arriving_date . '</div><div class=\'labelc\'>ARR. TIME</div><div class=\'valuec\'>' . $arriving_time . '</div></div></div>';
+            $div = $div . '<div id=\'flight' . $flight_id . '\' class=\'flightResult vcenter\' style=\'cursor: pointer;\' onclick=\'showDiv' . $flight_id . '()\' ><div class=\'flightNo infoDiv\'><div class=\'value\'>' . $this->airline[$index] . '</div></div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[$index] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div></div><div id=\'flight' . $flight_info_id . '\' class=\'flightResultInfo vcenter\' style=\'display: none; cursor: pointer;\' onclick=\'showDiv' . $flight_info_id . '()\' ><div id=\'set-left\' class=\'flightInfo infoDiv\'><div class=\'labelc\'>DEP. DATE</div><div class=\'valuec\'>' . $departing_date . '</div><div class=\'labelc\'>DEP. TIME</div><div class=\'valuec\'>' . $departing_time . '</div></div><div class=\'location infoDiv\'><div class=\'labelc\'>TERMINAL</div><div class=\'valuec\'>' . $this->source_terminal[$index] . '</div><div class=\'valuec\'>' . $this->source_airport[$index] . '</div></div><div class=\'location infoDiv\'><div class=\'labelc\'>TERMINAL</div><div class=\'valuec\'>' . $this->destination_terminal[$index] . '</div><div class=\'valuec\'>' . $this->destination_airport[$index] . '</div></div><div id=\'set-right\' class=\'flightInfo infoDiv\'><div class=\'labelc\'>ARR. DATE</div><div class=\'valuec\'>' . $arriving_date . '</div><div class=\'labelc\'>ARR. TIME</div><div class=\'valuec\'>' . $arriving_time . '</div></div></div>';
             $index++;
         }
         return $div;
@@ -158,7 +241,10 @@ class Offer
         while (count($this->source_iata_code) !== $index) {
             $flight_id = $flight_tag . '_' . $index;
             $flight_info_id = $flight_id . '_c';
-            $div = $div . 'document.addEventListener("DOMContentLoaded", function() { document.getElementById("flight' . $flight_id . '").addEventListener("click", function() {document.getElementById("flight' . $flight_id . '").style.display = "none"; document.getElementById("flight' . $flight_info_id . '").style.display = "flex";}); document.getElementById("flight' . $flight_info_id . '").addEventListener("click", function() {document.getElementById("flight' . $flight_id . '").style.display = "flex"; document.getElementById("flight' . $flight_info_id . '").style.display = "none";});});';
+
+            $div = $div . ' function showDiv' . $flight_id . '() { let elem1 = document.getElementById(\'flight' . $flight_id . '\'); elem1.style.display != \'none\' ? elem1.style.display = \'none\' : elem1.style.display = \'flex\'; let elem2 = document.getElementById(\'flight' . $flight_info_id . '\'); elem2.style.display == \'none\' ? elem2.style.display = \'flex\' : elem2.style.display = \'none\'; } function showDiv' . $flight_info_id . '() { let elem1 = document.getElementById(\'flight' . $flight_info_id  . '\'); elem1.style.display != \'none\' ? elem1.style.display = \'none\' : elem1.style.display = \'flex\'; let elem2 = document.getElementById(\'flight' . $flight_id  . '\'); elem2.style.display == \'none\' ? elem2.style.display = \'flex\' : elem2.style.display = \'none\'; } ';
+            
+            // $div = $div . ' document.addEventListener("DOMContentLoaded", function() { document.getElementById("flight' . $flight_id . '").addEventListener("click", function() {document.getElementById("flight' . $flight_id . '").style.display = "none"; document.getElementById("flight' . $flight_info_id . '").style.display = "flex";}); document.getElementById("flight' . $flight_info_id . '").addEventListener("click", function() {document.getElementById("flight' . $flight_id . '").style.display = "flex"; document.getElementById("flight' . $flight_info_id . '").style.display = "none";});});';
             $index++;
         }
         return $div;
@@ -169,8 +255,6 @@ class Offer
 /*
     TODO:
         --> Error Handeling
-        --> Before payment passenger info should be double checked
-            with information received from walk_data().
 */
 class Offer_request
 {
@@ -244,6 +328,16 @@ class Offer_request
         curl_close($ch);
     }
 
+    public function get_offer_ttl($offer_created_at, $offer_expires_at)
+    {
+        $created_at_date_string = substr($offer_created_at, 0, 10) . "  " . substr($offer_created_at, 11, 5);
+        $expires_at_date_string = substr($offer_expires_at, 0, 10) . "  " . substr($offer_expires_at, 11, 5);
+        $created_at_date = new DateTime($created_at_date_string);
+        $expires_at_date = new DateTime($expires_at_date_string);
+
+        return $created_at_date->diff($expires_at_date);
+    }
+
     /*
         NOTES:
         One-way: "offers"[key] --> "slices" ---> "segments" (1)   
@@ -266,6 +360,9 @@ class Offer_request
                 console_log('Offers received: ' . count($content));
                 foreach ($content as $_ => $v1) {
                     // ### Offer Data ###
+                    $offer_id = "";
+                    $offer_created_at = "";
+                    $offer_expires_at = "";
                     $source_iata_code = array();
                     $source_airport = array();
                     $source_terminal = array();
@@ -324,11 +421,22 @@ class Offer_request
                         } else if ($k2 === "total_currency") {
                             $total_currency = $v2;
                         } else if ($k2 === "total_amount") {
-                            $total_amount = $v2 . $total_currency;
+                            $total_amount = $v2 . ' ' . $total_currency;
+                        } else if ($k2 === "id") {
+                            $offer_id = $v2;
+                        } else if ($k2 === "expires_at") {
+                            $offer_expires_at = $v2;
+                        } else if ($k2 === "created_at") {
+                            $offer_created_at = $v2;
                         }
                     }
+
                     $count++;
-                    $offer = $this->create_offer($source_iata_code, $source_airport, $source_terminal, 
+                    $offer_ttl = $this->get_offer_ttl($offer_created_at, $offer_expires_at);
+                    //console_log("Offer id: " . $offer_id);
+                    //console_log("Offer ttl: " . $offer_ttl->format("%H:%I:%S"));
+                    $offer = $this->create_offer($offer_id, $offer_ttl, 
+                        $source_iata_code, $source_airport, $source_terminal, 
                         $destination_iata_code, $destination_airport, $destination_terminal, 
                         $departing_at, $arriving_at, $airline, $total_amount
                     );
@@ -339,6 +447,7 @@ class Offer_request
                     }
                 }
             } else if ($tag === "passengers") {
+                continue;
                 // Passengers info
                 // ### Debug:
                 //var_dump($content);
@@ -350,7 +459,7 @@ class Offer_request
         return $this->offers;
     }
 
-    private function create_offer($source_iata_code, $source_airport, $source_terminal, $destination_iata_code, $destination_airport, $destination_terminal, $departing_at, $arriving_at, $airline, $total_amount)
+    private function create_offer($offer_id, $offer_ttl, $source_iata_code, $source_airport, $source_terminal, $destination_iata_code, $destination_airport, $destination_terminal, $departing_at, $arriving_at, $airline, $total_amount)
     {
         $size_arr = count($source_iata_code);
         if (
@@ -363,6 +472,8 @@ class Offer_request
         }
 
         return new Offer(
+            $offer_id,
+            $offer_ttl,
             $source_iata_code,
             $source_airport,
             $source_terminal,
