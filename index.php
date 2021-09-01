@@ -16,7 +16,8 @@
  */
 function add_scripts()
 {
-    wp_enqueue_style('plugin-stylesheet', plugins_url('style_results.css', __FILE__));
+    // wp_enqueue_style('plugin-stylesheet', plugins_url('style_results.css', __FILE__));
+    wp_enqueue_style('plugin-stylesheet', plugin_dir_url(__FILE__) . 'style/results.css');
 }
 add_action('wp_enqueue_scripts', 'add_scripts');
 
@@ -26,7 +27,8 @@ include_once(plugin_dir_path(__FILE__) . 'comp/aux.php');
 include_once(plugin_dir_path(__FILE__) . 'comp/classes.php');
 
 
-if (isset($_POST['hidden_submit'])) {
+// (isset($_POST['hidden_submit']))
+if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     $first_date = $_POST['input-date-first'];
     $second_date = $_POST['input-date-second'];
 
@@ -93,4 +95,10 @@ if (isset($_POST['hidden_submit'])) {
             $offer->print_html();
         }
     }
+} else if ($_POST['flight-price'] === "PAYMENT") {
+    alert('PRICE div3');
+} 
+
+if (isset($_POST['flight-price'])) {
+    alert('PRICE div4');
 }
