@@ -66,6 +66,11 @@ class Offer
         $this->airline = $airline;
     }
 
+    public function get_offer_id() 
+    {
+        return $this->offer_id;
+    }
+
     public function print_html()
     { 
 

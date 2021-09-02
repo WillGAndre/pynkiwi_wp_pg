@@ -26,7 +26,7 @@ include_once(plugin_dir_path(__FILE__) . 'comp/aux.php');
 // Classes - Slices, Passengers, Offer Request, Offers
 include_once(plugin_dir_path(__FILE__) . 'comp/classes.php');
 
-$offers = array();
+$hashmap_offers = array();
 
 // (isset($_POST['hidden_submit']))
 if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
@@ -94,10 +94,38 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
         if ($airline_name === "None" || $offer->compare_airline($airline_name)) {
             // console_log("Input airline name: " . $airline_name);
             $offer->print_html();
+            $hashmap_offers[$offer->get_offer_id()] = $offer;
         }
     }
 }
 
+// Offer ID --> $_POST['offer_submit']
+/*
+    \
+     -> Send user to account
+
+    In account:
+        Based on offer ID, get single/updated offer from duffel
+            \
+            --> Payment 
+            \
+            --> Offer class (to represent the flights)
+            \
+            --> Passengers
+            \
+            --> Extra flight options
+*/
 if (isset($_POST['flight-price'])) {
-    alert($_POST['offer_submit']);
+    $offer_id = $_POST['offer_submit'];
+    add_action('init', 'check_user');
+}
+
+function check_user()
+{
+    if (is_user_logged_in()) :
+        header('Location: https://pynkiwi.wpcomstaging.com/?page_id=2475');
+        console_log('user logged in');
+    else :
+        console_log('user not logged in');
+    endif;
 }
