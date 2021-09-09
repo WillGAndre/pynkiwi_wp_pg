@@ -1,5 +1,5 @@
 <?php
-// ###### Offer ######
+
 /*
     TODO:
         --> Add payment
@@ -15,10 +15,203 @@
 
                 *1 - https://help.duffel.com/hc/en-gb/articles/360021056640
 
+                Create class for offer payment, having:
+                    - total amount (+ currency)
+                    - total tax (+ currency)
+                    - offer options (if available, etc)
+                    - payment flag (if offer was purchased)
+                    - Passenger Info (class)
+
             -> Before payment passenger info should be double checked
                with information received from walk_data().
 */
 
+// ###### Single Offer ######
+// Prerequisite: offer id
+
+class Single_Offer
+{
+    private $offer_id;
+    private $offer;
+    private $offer_payment_info;
+    private $passenger_info;
+
+    public function __construct($offer_id)
+    {
+        $this->offer_id = $offer_id;
+    }
+
+    public function get_single_offer()
+    {
+        $url = "https://api.duffel.com/air/offers/" . $this->offer_id . "?return_available_services=true";
+        $header = array(
+            'Accept-Encoding: gzip',
+            'Accept: application/json',
+            'Content-Type: application/json',
+            'Duffel-Version: beta',
+            'Authorization: Bearer duffel_test__CCC-2IpAyTjsoCzktXw_9Aaf3BPq8O26Tff5rzc1F0'
+        );
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+        $res = curl_exec($ch);
+        if ($err = curl_error($ch)) {
+            // console_log('Error getting single offer - ' + $err);
+        } else {
+            // console_log('Got single offer successfully');
+            $response = gzdecode($res);
+            $resp_decoded = json_decode($response);
+
+            $data = $resp_decoded->data;
+            // var_dump($data);
+
+            $this->walk_data($data);
+        }
+    }
+
+    private function walk_data($data)
+    {
+        $this->passenger_info = $data->passengers;
+
+        $total_amount = $data->total_amount . ' ' . $data->total_currency;
+        $tax_amount = $data->tax_amount . ' ' . $data->total_currency;
+        $payment_req = $data->payment_requirements;
+        $pass_id_doc_req = $data->passenger_identity_documents_required;
+        $conds = $data->conditions;
+        $base_amount = $data->base_amount . ' ' . $data->base_currency;
+        $available_services = $data->available_services;
+        $allowed_pass_id_doc_types = $data->allowed_passenger_identity_document_types;
+
+        $this->offer = $this->create_offer($data->id, $data->slices, $data->created_at, $data->expires_at);
+        $this->offer_payment_info = new Offer_Payment_Info(
+            $total_amount, $tax_amount, $payment_req, 
+            $pass_id_doc_req, $conds, $base_amount,
+            $available_services, $allowed_pass_id_doc_types
+        );
+    }
+
+    private function create_offer($offer_id, $slices, $created_at, $expires_at) 
+    {
+        // ### Offer Data ###
+        $offer_id = "";
+        $source_iata_code = array();
+        $source_airport = array();
+        $source_terminal = array();
+        $destination_iata_code = array();
+        $destination_airport = array();
+        $destination_terminal = array();
+        $departing_at = array();
+        $arriving_at = array();
+        $total_amount = "";
+        $airline = array();
+        // ---    ####    ---
+        foreach ($slices as $_ => $v3) {
+            foreach ($v3 as $k4 => $v4) {
+                if ($k4 === "segments") {
+                    foreach ($v4 as $_ => $v5) {
+                        foreach ($v5 as $k6 => $v6) {
+                            if ($k6 === "origin_terminal") {
+                                array_push($source_terminal, $v6);
+                            } else if ($k6 === "origin") {
+                                foreach ($v6 as $k7 => $v7) {
+                                    if ($k7 === "name") {
+                                        array_push($source_airport, $v7);
+                                    } else if ($k7 === "iata_code") {
+                                        array_push($source_iata_code, $v7);
+                                    }
+                                }
+                            } else if ($k6 === "destination_terminal") {
+                                array_push($destination_terminal, $v6);
+                            } else if ($k6 === "destination") {
+                                foreach ($v6 as $k7 => $v7) {
+                                    if ($k7 === "name") {
+                                        array_push($destination_airport, $v7);
+                                    } else if ($k7 === "iata_code") {
+                                        array_push($destination_iata_code, $v7);
+                                    }
+                                }
+                            } else if ($k6 === "departing_at") {
+                                array_push($departing_at, $v6);
+                            } else if ($k6 === "arriving_at") { // Last entry scanned 
+                                array_push($arriving_at, $v6);
+                            } else if ($k6 === "operating_carrier") {
+                                foreach ($v6 as $k7 => $v7) {
+                                    if ($k7 === "name") {
+                                        array_push($airline, $v7);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return new Offer(
+            $offer_id,
+            get_offer_ttl($created_at, $expires_at),
+            $source_iata_code,
+            $source_airport,
+            $source_terminal,
+            $destination_iata_code,
+            $destination_airport,
+            $destination_terminal,
+            $departing_at,
+            $arriving_at,
+            $this->cabin_class,
+            $total_amount,
+            $airline
+        );
+    }
+
+    public function get_offer() {
+        return $this->offer;
+    }
+
+    public function print_single_offer_html() {
+        return $this->offer->print_html(1);
+    }
+
+    public function get_offer_payment_info() {
+        return $this->offer_payment_info;
+    }
+
+    public function get_passengers_info() {
+        return $this->passenger_info;
+    }
+}
+
+// ###### Offer payment info ######
+// TODO: Finish class
+class Offer_Payment_Info
+{
+    private $total_amount;
+    private $tax_amount; // plus currency
+    private $payment_requirements;
+    private $passenger_identity_documents_required;
+    private $conditions;
+    private $base_amount; // plus currency
+    private $available_services;
+    private $allowed_passenger_identity_document_types;
+
+    public function __construct($total_amount, $tax_amount, $payment_req, $passenger_id_doc_req, $conds, $base_amount, $services, $allowed_pass_id_docs)
+    {
+        $this->total_amount = $total_amount;
+        $this->tax_amount = $tax_amount;
+        $this->payment_requirements = $payment_req;
+        $this->passenger_identity_documents_required = $passenger_id_doc_req;
+        $this->conditions = $conds;
+        $this->base_amount = $base_amount;
+        $this->available_services = $services;
+        $this->allowed_passenger_identity_document_types = $allowed_pass_id_docs;
+    }
+}
+
+// ###### Offer ######
 class Offer
 {
     private $offer_id;
@@ -71,55 +264,74 @@ class Offer
         return $this->offer_id;
     }
 
-    public function print_html()
-    { 
-
+    public function print_html($single_offer)
+    {
         $trips = count($this->source_iata_code);
         if ($this->flight_class == "Premium_Economy") {
             $this->flight_class = "P.Economy";
         }
-        if ($trips === 1) {
-            $airline = $this->get_airlines_div($this->airline);
-            $departing_time = substr($this->departing_at[0], 11, 5);
-            $flight_duration = $this->get_flight_duration($this->departing_at[0], $this->arriving_at[0]);
 
-            console_log('Printing flight from: ' . $this->source_iata_code[0] . '  to  ' . $this->destination_iata_code[0]);
-
+        if ($single_offer):
+            console_log('Printing Single Offer');
+            $depart_date_string = substr($this->departing_at[0], 0, 10) . "  " . substr($this->departing_at[0], 11, 5);
+            $arrive_date_string = substr($this->arriving_at[0], 0, 10) . "  " . substr($this->arriving_at[0], 11, 5);
+            $flight_duration = $this->get_flight_duration($depart_date_string, $arrive_date_string);
+            // if $trips == 1 --> Remove subflights button
+            // else --> print the rest of the trips
             echo
-            '<link rel="stylesheet" href="./style_results.css">
-            <script>
-                    document.addEventListener("DOMContentLoaded", function(event) {
-                        document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\'><div class=\'flightNo infoDiv\'>' . $airline . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[0] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[0] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'></div></form></div>";
-                        console.log(document.getElementById("flightResults"));
-                    });
+            '<script>
+                document.addEventListener("DOMContentLoaded", function(event) { 
+                    document.getElementById("entry-source").innerHTML += "' . $this->source_iata_code[0] . '";
+                    document.getElementById("entry-dest").innerHTML += "' . $this->destination_iata_code[0] . '";
+                    document.getElementById("entry-dep_date").innerHTML += "' . $depart_date_string . '";
+                    document.getElementById("entry-arr_date").innerHTML += "' . $arrive_date_string . '";
+                    document.getElementById("entry-flight_time").innerHTML += "' . $flight_duration . '";
+                });
             </script>';
-        } else {
-            $div_id = rand();
-            $flight_tag = rand();
-            $departing_time = substr($this->departing_at[0], 11, 5);
-            $airlines = $this->get_airlines_div(array_unique($this->airline));
-            $middle_flights = $this->get_intermediate_flights($flight_tag);
-            $middle_flights_scripts = $this->get_intermediate_flights_scripts($flight_tag);
+        else:
+            if ($trips === 1) {
+                $airline = $this->get_airlines_div($this->airline);
+                $departing_time = substr($this->departing_at[0], 11, 5);
+                $flight_duration = $this->get_flight_duration($this->departing_at[0], $this->arriving_at[0]);
 
-            console_log('Printing flight from: ' . IATA_FROM . '  to  ' . IATA_TO);
+                console_log('Printing flight from: ' . $this->source_iata_code[0] . '  to  ' . $this->destination_iata_code[0]);
 
-            echo
-            '<link rel="stylesheet" href="./style_results.css">
-            <script>
-                    function showDiv' . $div_id . '() {
-                        let elem = document.getElementById("subflight' . $div_id . '");
-                        elem.style.display == "block" ? elem.style.display = "none" : elem.style.display = "block"; 
-                    }
+                echo
+                '<link rel="stylesheet" href="./style_results.css">
+                <script>
+                        document.addEventListener("DOMContentLoaded", function(event) {
+                            document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\'><div class=\'flightNo infoDiv\'>' . $airline . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[0] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[0] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'></div></form></div>";
+                            console.log(document.getElementById("flightResults"));
+                        });
+                </script>';
+            } else {
+                $div_id = rand();
+                $flight_tag = rand();
+                $departing_time = substr($this->departing_at[0], 11, 5);
+                $airlines = $this->get_airlines_div(array_unique($this->airline));
+                $middle_flights = $this->get_intermediate_flights($flight_tag);
+                $middle_flights_scripts = $this->get_intermediate_flights_scripts($flight_tag);
 
-                    ' . $middle_flights_scripts . '
+                console_log('Printing flight from: ' . IATA_FROM . '  to  ' . IATA_TO . ' + subflights ');
 
-                    document.addEventListener("DOMContentLoaded", function(event) {
-                        document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\'><div id=\'airlines\' class=\'flightNo infoDiv\'>' . $airlines . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . IATA_FROM . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'center\'><input class=\'flightsBt\' type=\'button\' name=\'answer\' value=\'Show Flights\' onclick=\'showDiv' . $div_id . '()\' /></div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . IATA_TO . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'></div></form></div><div id=\'subflight' . $div_id . '\' class=\'flightResults\' style=\'display:none; margin-left: 2.6em; width: -moz-fit-content; width: fit-content;\'>' . $middle_flights . '</div>";
-                        console.log(document.getElementById("flightResults"));
-                        console.log(document.getElementById("subflight' . $div_id . '"));
-                    });
-            </script>';
-        }
+                echo
+                '<link rel="stylesheet" href="./style_results.css">
+                <script>
+                        function showDiv' . $div_id . '() {
+                            let elem = document.getElementById("subflight' . $div_id . '");
+                            elem.style.display == "block" ? elem.style.display = "none" : elem.style.display = "block"; 
+                        }
+
+                        ' . $middle_flights_scripts . '
+
+                        document.addEventListener("DOMContentLoaded", function(event) {
+                            document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\'><div id=\'airlines\' class=\'flightNo infoDiv\'>' . $airlines . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . IATA_FROM . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'center\'><input class=\'flightsBt\' type=\'button\' name=\'answer\' value=\'Show Flights\' onclick=\'showDiv' . $div_id . '()\' /></div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . IATA_TO . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'></div></form></div><div id=\'subflight' . $div_id . '\' class=\'flightResults\' style=\'display:none; margin-left: 2.6em; width: -moz-fit-content; width: fit-content;\'>' . $middle_flights . '</div>";
+                            console.log(document.getElementById("flightResults"));
+                            console.log(document.getElementById("subflight' . $div_id . '"));
+                        });
+                </script>';
+            }
+        endif;
     }
 
     public function compare_airline($input_airline) 
@@ -357,109 +569,111 @@ class Offer_request
         $count = 0;
         // ---  ####  ---
 
-        foreach ($data as $tag => $content) {
-            if ($tag === "slices") {                         
-                // General airport info
-                continue;
-            } else if ($tag === "offers") { // Refactor when done
-                console_log('Offers received: ' . count($content));
-                foreach ($content as $_ => $v1) {
-                    // ### Offer Data ###
-                    $offer_id = "";
-                    $offer_created_at = "";
-                    $offer_expires_at = "";
-                    $source_iata_code = array();
-                    $source_airport = array();
-                    $source_terminal = array();
-                    $destination_iata_code = array();
-                    $destination_airport = array();
-                    $destination_terminal = array();
-                    $departing_at = array();
-                    $arriving_at = array();
-                    $total_amount = "";
-                    $total_currency = "";
-                    $airline = array();
-                    // ---    ####    ---
-                    foreach ($v1 as $k2 => $v2) {
-                        if ($k2 === "slices") {
-                            foreach ($v2 as $_ => $v3) {
-                                foreach ($v3 as $k4 => $v4) {
-                                    if ($k4 === "segments") {
-                                        foreach ($v4 as $_ => $v5) {
-                                            foreach ($v5 as $k6 => $v6) {
-                                                if ($k6 === "origin_terminal") {
-                                                    array_push($source_terminal, $v6);
-                                                } else if ($k6 === "origin") {
-                                                    foreach ($v6 as $k7 => $v7) {
-                                                        if ($k7 === "name") {
-                                                            array_push($source_airport, $v7);
-                                                        } else if ($k7 === "iata_code") {
-                                                            array_push($source_iata_code, $v7);
-                                                        }
-                                                    }
-                                                } else if ($k6 === "destination_terminal") {
-                                                    array_push($destination_terminal, $v6);
-                                                } else if ($k6 === "destination") {
-                                                    foreach ($v6 as $k7 => $v7) {
-                                                        if ($k7 === "name") {
-                                                            array_push($destination_airport, $v7);
-                                                        } else if ($k7 === "iata_code") {
-                                                            array_push($destination_iata_code, $v7);
-                                                        }
-                                                    }
-                                                } else if ($k6 === "departing_at") {
-                                                    array_push($departing_at, $v6);
-                                                } else if ($k6 === "arriving_at") { // Last entry scanned 
-                                                    array_push($arriving_at, $v6);
-                                                } else if ($k6 === "operating_carrier") {
-                                                    foreach ($v6 as $k7 => $v7) {
-                                                        if ($k7 === "name") {
-                                                            array_push($airline, $v7);
-                                                        }
-                                                    }
+        // $slices = $data->slices;
+        // $passen = $data->passengers;
+        $offers = $data->offers;
+        $this->offer_request_id = $data->id;
+
+        console_log('Offers received: ' . count($offers));
+        foreach($offers as $_ => $v1) {
+            // ### Offer Data ###
+            $offer_id = "";
+            $offer_created_at = "";
+            $offer_expires_at = "";
+            $source_iata_code = array();
+            $source_airport = array();
+            $source_terminal = array();
+            $destination_iata_code = array();
+            $destination_airport = array();
+            $destination_terminal = array();
+            $departing_at = array();
+            $arriving_at = array();
+            $total_amount = "";
+            $total_currency = "";
+            $airline = array();
+            // ---    ####    ---
+            foreach ($v1 as $k2 => $v2) {
+                if ($k2 === "slices") {
+                    foreach ($v2 as $_ => $v3) {
+                        foreach ($v3 as $k4 => $v4) {
+                            if ($k4 === "segments") {
+                                foreach ($v4 as $_ => $v5) {
+                                    foreach ($v5 as $k6 => $v6) {
+                                        if ($k6 === "origin_terminal") {
+                                            array_push($source_terminal, $v6);
+                                        } else if ($k6 === "origin") {
+                                            foreach ($v6 as $k7 => $v7) {
+                                                if ($k7 === "name") {
+                                                    array_push($source_airport, $v7);
+                                                } else if ($k7 === "iata_code") {
+                                                    array_push($source_iata_code, $v7);
+                                                }
+                                            }
+                                        } else if ($k6 === "destination_terminal") {
+                                            array_push($destination_terminal, $v6);
+                                        } else if ($k6 === "destination") {
+                                            foreach ($v6 as $k7 => $v7) {
+                                                if ($k7 === "name") {
+                                                    array_push($destination_airport, $v7);
+                                                } else if ($k7 === "iata_code") {
+                                                    array_push($destination_iata_code, $v7);
+                                                }
+                                            }
+                                        } else if ($k6 === "departing_at") {
+                                            array_push($departing_at, $v6);
+                                        } else if ($k6 === "arriving_at") { // Last entry scanned 
+                                            array_push($arriving_at, $v6);
+                                        } else if ($k6 === "operating_carrier") {
+                                            foreach ($v6 as $k7 => $v7) {
+                                                if ($k7 === "name") {
+                                                    array_push($airline, $v7);
                                                 }
                                             }
                                         }
                                     }
                                 }
                             }
-                        } else if ($k2 === "total_currency") {
-                            $total_currency = $v2;
-                        } else if ($k2 === "total_amount") {
-                            $total_amount = $v2 . ' ' . $total_currency;
-                        } else if ($k2 === "id") {
-                            $offer_id = $v2;
-                        } else if ($k2 === "expires_at") {
-                            $offer_expires_at = $v2;
-                        } else if ($k2 === "created_at") {
-                            $offer_created_at = $v2;
                         }
                     }
-
-                    $count++;
-                    $offer_ttl = $this->get_offer_ttl($offer_created_at, $offer_expires_at);
-                    //console_log("Offer id: " . $offer_id);
-                    //console_log("Offer ttl: " . $offer_ttl->format("%H:%I:%S"));
-                    $offer = $this->create_offer($offer_id, $offer_ttl, 
-                        $source_iata_code, $source_airport, $source_terminal, 
-                        $destination_iata_code, $destination_airport, $destination_terminal, 
-                        $departing_at, $arriving_at, $airline, $total_amount
-                    );
-                    array_push($this->offers, $offer);
-                    if ($count === self::MAX_OFFERS) {
-                        console_log('Reached max offers');
-                        break;
-                    }
+                } else if ($k2 === "total_currency") {
+                    $total_currency = $v2;
+                } else if ($k2 === "total_amount") {
+                    $total_amount = $v2 . ' ' . $total_currency;
+                } else if ($k2 === "id") {
+                    $offer_id = $v2;
+                } else if ($k2 === "expires_at") {
+                    $offer_expires_at = $v2;
+                } else if ($k2 === "created_at") {
+                    $offer_created_at = $v2;
                 }
-            } else if ($tag === "passengers") {
-                continue;
-                // Passengers info
-                // ### Debug:
-                //var_dump($content);
-            } else if ($tag === "id") {
-                $this->offer_request_id = $content;
+            }
+
+            $count++;
+            $offer_ttl = get_offer_ttl($offer_created_at, $offer_expires_at);
+            //console_log("Offer id: " . $offer_id);
+            //console_log("Offer ttl: " . $offer_ttl->format("%H:%I:%S"));
+            $offer = $this->create_offer(
+                $offer_id,
+                $offer_ttl,
+                $source_iata_code,
+                $source_airport,
+                $source_terminal,
+                $destination_iata_code,
+                $destination_airport,
+                $destination_terminal,
+                $departing_at,
+                $arriving_at,
+                $airline,
+                $total_amount
+            );
+            array_push($this->offers, $offer);
+            if ($count === self::MAX_OFFERS) {
+                console_log('Reached max offers');
+                break;
             }
         }
+
+
 
         return $this->offers;
     }
@@ -493,6 +707,8 @@ class Offer_request
         );
     }
 }
+
+// ###### Duffel Offer request arguments ######
 
 // ###### Slices ######
 

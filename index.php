@@ -93,39 +93,37 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     foreach ($offers as $index => $offer) {
         if ($airline_name === "None" || $offer->compare_airline($airline_name)) {
             // console_log("Input airline name: " . $airline_name);
-            $offer->print_html();
+            $offer->print_html(0);
             $hashmap_offers[$offer->get_offer_id()] = $offer;
         }
     }
 }
 
 // Offer ID --> $_POST['offer_submit']
-/*
-    \
-     -> Send user to account
-
-    In account:
-        Based on offer ID, get single/updated offer from duffel
-            \
-            --> Payment 
-            \
-            --> Offer class (to represent the flights)
-            \
-            --> Passengers
-            \
-            --> Extra flight options
-*/
 if (isset($_POST['flight-price'])) {
-    $offer_id = $_POST['offer_submit'];
     add_action('init', 'check_user');
 }
 
 function check_user()
 {
     if (is_user_logged_in()) :
-        header('Location: https://pynkiwi.wpcomstaging.com/?page_id=2475');
         console_log('user logged in');
+        header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+            'page_id' => 2475,
+            'offer_id' => $_POST['offer_submit']
+        )));
     else :
+        header('Location: https://pynkiwi.wpcomstaging.com/?page_id=2478');
         console_log('user not logged in');
     endif;
+}
+
+
+// Trigger -> onclick of offer price button (redirect to account)
+if (isset($_GET['offer_id'])) {
+    alert('Received offer id from url query');
+    $offer_id = $_GET['offer_id'];
+    $single_offer = new Single_Offer($offer_id);
+    $single_offer->get_single_offer();
+    $single_offer->print_single_offer_html();
 }
