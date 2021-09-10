@@ -1,34 +1,28 @@
 <?php
+// Copyright 2021 - PYNKIWI
+// WordPress --> WP
 
 /*
     TODO:
-        --> Add payment
+        --> Add offer payment + special options (baggage, choosing seats, etc..)
 
-            -> On payment button click open up html page.
+            Continue to add info in account page, when payment button clicked.
+            (Offer -> print_html())
 
-                Use offer ID to get updated offer (on button clicked),
-                then double check passenger info (input and returned by
-                duffel), show legal notices (*1), get total_amount/
-                total_currency and open a form for passenger info input 
-                (email, phone num, etc, ..), this also inculdes passenger_id
-                (returned by duffel in specific Offer).
+            *1 Legal notice - https://help.duffel.com/hc/en-gb/articles/360021056640
 
-                *1 - https://help.duffel.com/hc/en-gb/articles/360021056640
 
-                Create class for offer payment, having:
-                    - total amount (+ currency)
-                    - total tax (+ currency)
-                    - offer options (if available, etc)
-                    - payment flag (if offer was purchased)
-                    - Passenger Info (class)
-
-            -> Before payment passenger info should be double checked
-               with information received from walk_data().
+        --> When offer request is created, passenger information should
+            be double checked with passenger info returned in offers.
 */
 
-// ###### Single Offer ######
-// Prerequisite: offer id
-
+/** ###### Single Offer ######
+ *  Prerequisite: Offer id
+ *  Class utilized to get single offer
+ *  from duffel as well as printing the
+ *  returned data back to WP.
+ *  Also creates an Offer and Offer_Payment_Info class.
+ */
 class Single_Offer
 {
     private $offer_id;
@@ -60,9 +54,9 @@ class Single_Offer
 
         $res = curl_exec($ch);
         if ($err = curl_error($ch)) {
-            // console_log('Error getting single offer - ' + $err);
+            console_log('Error getting single offer - ' + $err);
         } else {
-            // console_log('Got single offer successfully');
+            console_log('Got single offer successfully');
             $response = gzdecode($res);
             $resp_decoded = json_decode($response);
 
@@ -73,6 +67,13 @@ class Single_Offer
         }
     }
 
+    /**
+     * Function used to walk the data
+     * returned by Duffel. 
+     * Using this data, passenger info
+     * is saved and one Offer and Offer_Payment_Info
+     * class is created to print the data.
+     */
     private function walk_data($data)
     {
         $this->passenger_info = $data->passengers;
@@ -94,6 +95,11 @@ class Single_Offer
         );
     }
 
+    /**
+     * Function to create an updated Offer,
+     * data->slices holds every information
+     * necessary to create an offer.
+     */
     private function create_offer($offer_id, $slices, $created_at, $expires_at) 
     {
         // ### Offer Data ###
@@ -176,6 +182,10 @@ class Single_Offer
         return $this->offer->print_html(1);
     }
 
+    public function print_single_offer_opts_html() {
+        return $this->offer_payment_info->print_html();
+    }
+
     public function get_offer_payment_info() {
         return $this->offer_payment_info;
     }
@@ -185,8 +195,11 @@ class Single_Offer
     }
 }
 
-// ###### Offer payment info ######
-// TODO: Finish class
+/** ###### Offer payment info ######
+ *  Class that holds payment/conditions/services
+ *  information about an offer, used mainly under
+ *  /account in WP.
+ */
 class Offer_Payment_Info
 {
     private $total_amount;
@@ -198,7 +211,8 @@ class Offer_Payment_Info
     private $available_services;
     private $allowed_passenger_identity_document_types;
 
-    public function __construct($total_amount, $tax_amount, $payment_req, $passenger_id_doc_req, $conds, $base_amount, $services, $allowed_pass_id_docs)
+    public function __construct($total_amount, $tax_amount, $payment_req, 
+    $passenger_id_doc_req, $conds, $base_amount, $services, $allowed_pass_id_docs)
     {
         $this->total_amount = $total_amount;
         $this->tax_amount = $tax_amount;
@@ -208,6 +222,50 @@ class Offer_Payment_Info
         $this->base_amount = $base_amount;
         $this->available_services = $services;
         $this->allowed_passenger_identity_document_types = $allowed_pass_id_docs;
+    }
+
+    /**
+     * Function to print html (echo from php) in /account
+     * TODO:
+     *     *-> Add support for showing sub flights (Offer --> print_html()).
+     *     *-> Add support for additional bags (add segments returned from duffel as parameter to this class).
+     *     *-> Add support for seat selection.
+     *     *-> Add offer payment support (also in wordpress).
+     *          \
+     *           --> Reformat passenger form and use data to send payment options.
+     */
+    public function print_html() {
+        $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
+        $script = $this->get_refund_change_scripts($init_script);
+        $script = $script . '}); </script>';
+        echo $script;
+    }
+
+    /**
+     * TODO: 
+     *     *-> Add price buttons + interaction
+     */
+    private function get_refund_change_scripts($script) {
+        $refund_before_departure = $this->conditions->refund_before_departure;
+        $change_before_departure = $this->conditions->change_before_departure;
+        
+        if ($refund_before_departure !== NULL && $refund_before_departure->allowed) {
+            console_log('Refunds: ' . $refund_before_departure->allowed);
+            $refund_penalty_amount = $refund_before_departure->penalty_amount . ' ' . $refund_before_departure->penalty_currency;
+            $script = $script . 'document.getElementById("entry-ref_price").innerHTML += "' . $refund_penalty_amount . '";';
+        } else {
+            $script = $script . 'document.getElementById("entry-ref_price").style.display = "none";';
+        }
+
+        if ($change_before_departure !== NULL && $change_before_departure->allowed) {
+            console_log('Changes: ' . $change_before_departure->allowed);
+            $change_penalty_amount = $change_before_departure->penalty_amount . ' ' . $change_before_departure->penalty_currency;
+            $script = $script . 'document.getElementById("entry-chg_price").innerHTML += "' . $change_penalty_amount . '";';
+        } else {
+            $script = $script . 'document.getElementById("entry-chg_price").style.display = "none";';
+        }
+        
+        return $script;
     }
 }
 
@@ -264,6 +322,7 @@ class Offer
         return $this->offer_id;
     }
 
+    // 0 -> normal offer | 1 -> single offer
     public function print_html($single_offer)
     {
         $trips = count($this->source_iata_code);

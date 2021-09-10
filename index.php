@@ -1,5 +1,5 @@
 <?php
-
+// Copyright 2021 - PYNKIWI
 /**
  * Plugin Name: Pynkiwi flights plugin
  * Plugin URI: -
@@ -126,4 +126,5 @@ if (isset($_GET['offer_id'])) {
     $single_offer = new Single_Offer($offer_id);
     $single_offer->get_single_offer();
     $single_offer->print_single_offer_html();
+    $single_offer->print_single_offer_opts_html();
 }

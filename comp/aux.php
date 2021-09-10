@@ -1,4 +1,5 @@
 <?php
+// Copyright 2021 - PYNKIWI
 
 // ###### Auxilary ######
 function get_offer_ttl($offer_created_at, $offer_expires_at)
