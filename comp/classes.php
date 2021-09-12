@@ -18,6 +18,7 @@
 
 /** ###### Single Offer ######
  *  Prerequisite: Offer id
+ * 
  *  Class utilized to get single offer
  *  from duffel as well as printing the
  *  returned data back to WP.
@@ -227,12 +228,12 @@ class Offer_Payment_Info
     /**
      * Function to print html (echo from php) in /account
      * TODO:
-     *     *-> Add support for showing sub flights (Offer --> print_html()).
      *     *-> Add support for additional bags (add segments returned from duffel as parameter to this class).
      *     *-> Add support for seat selection.
      *     *-> Add offer payment support (also in wordpress).
      *          \
      *           --> Reformat passenger form and use data to send payment options.
+     *     *-> Add payment support for sub flights.
      */
     public function print_html() {
         $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
@@ -243,33 +244,47 @@ class Offer_Payment_Info
 
     /**
      * TODO: 
-     *     *-> Add price buttons + interaction
+     *     *-> Add button interaction
      */
     private function get_refund_change_scripts($script) {
         $refund_before_departure = $this->conditions->refund_before_departure;
         $change_before_departure = $this->conditions->change_before_departure;
-        
+
+        console_log('Refunds: ' . $refund_before_departure->allowed);
         if ($refund_before_departure !== NULL && $refund_before_departure->allowed) {
-            console_log('Refunds: ' . $refund_before_departure->allowed);
             $refund_penalty_amount = $refund_before_departure->penalty_amount . ' ' . $refund_before_departure->penalty_currency;
             $script = $script . 'document.getElementById("entry-ref_price").innerHTML += "' . $refund_penalty_amount . '";';
         } else {
-            $script = $script . 'document.getElementById("entry-ref_price").style.display = "none";';
+            $script = $script . 'document.getElementById("entry-ref").style.display = "none";';
         }
 
+        console_log('Changes: ' . $change_before_departure->allowed);
         if ($change_before_departure !== NULL && $change_before_departure->allowed) {
-            console_log('Changes: ' . $change_before_departure->allowed);
             $change_penalty_amount = $change_before_departure->penalty_amount . ' ' . $change_before_departure->penalty_currency;
             $script = $script . 'document.getElementById("entry-chg_price").innerHTML += "' . $change_penalty_amount . '";';
         } else {
-            $script = $script . 'document.getElementById("entry-chg_price").style.display = "none";';
+            $script = $script . 'document.getElementById("entry-chg").style.display = "none";';
         }
         
         return $script;
     }
 }
 
-// ###### Offer ######
+/** ###### Offer ######
+ * Offer class used to show
+ * offers received from Offer_request
+ * (walk_data and create_offer) in
+ * WordPress (/flight-booking).
+ * 
+ * print_html holds three possible
+ * echo's in which two may be agrupated 
+ * as a single offer (updated version of a single offer,
+ * single echo) or a new freshly received offer (recieved
+ * from Offer_request, two possible echos).
+ * 
+ * Single/Updated Offer --> print_html(1)
+ * New Offer --> print_html(0) 
+ */
 class Offer
 {
     private $offer_id;
@@ -332,23 +347,30 @@ class Offer
 
         if ($single_offer):
             console_log('Printing Single Offer');
+
+            $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
+
+            if ($trips === 1) {
+                $init_script = $init_script . 'document.getElementById("sub_flights").style.display = "none"; ';
+            } else {
+                // subtrips
+                $index = 1;
+                while ($index < $trips) {
+                    $depart_date_string = substr($this->departing_at[$index], 0, 10) . "  " . substr($this->departing_at[$index], 11, 5);
+                    $arrive_date_string = substr($this->arriving_at[$index], 0, 10) . "  " . substr($this->arriving_at[$index], 11, 5);
+                    $flight_duration = $this->get_flight_duration($depart_date_string, $arrive_date_string);
+                    $init_script = $init_script . 'document.getElementById("sub_flights").onclick = function(event) { document.getElementById("flight_info").innerHTML += "<div id=\'flight_info_content\'><div class=\'entry top\'><div class=\'title\'>Source:</div><div id=\'entry-source\' class=\'text\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Destination:</div><div id=\'entry-dest\' class=\'text\'>' . $this->destination_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Dep Date:</div><div id=\'entry-dep_date\' class=\'text\'>' . $depart_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Arr Date:</div><div id=\'entry-arr_date\' class=\'text\'>' . $arrive_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Flight time:</div><div id=\'entry-flight_time\' class=\'text\'>' . $flight_duration . '</div></div></div>"; }; ';
+                    $index++;
+                }
+            }
+
             $depart_date_string = substr($this->departing_at[0], 0, 10) . "  " . substr($this->departing_at[0], 11, 5);
             $arrive_date_string = substr($this->arriving_at[0], 0, 10) . "  " . substr($this->arriving_at[0], 11, 5);
             $flight_duration = $this->get_flight_duration($depart_date_string, $arrive_date_string);
-            // if $trips == 1 --> Remove subflights button
-            // else --> print the rest of the trips
-            echo
-            '<script>
-                document.addEventListener("DOMContentLoaded", function(event) { 
-                    document.getElementById("entry-source").innerHTML += "' . $this->source_iata_code[0] . '";
-                    document.getElementById("entry-dest").innerHTML += "' . $this->destination_iata_code[0] . '";
-                    document.getElementById("entry-dep_date").innerHTML += "' . $depart_date_string . '";
-                    document.getElementById("entry-arr_date").innerHTML += "' . $arrive_date_string . '";
-                    document.getElementById("entry-flight_time").innerHTML += "' . $flight_duration . '";
-                });
-            </script>';
+
+            echo $init_script . 'document.getElementById("entry-source").innerHTML += "' . $this->source_iata_code[0] . '"; document.getElementById("entry-dest").innerHTML += "' . $this->destination_iata_code[0] . '"; document.getElementById("entry-dep_date").innerHTML += "' . $depart_date_string . '"; document.getElementById("entry-arr_date").innerHTML += "' . $arrive_date_string . '"; document.getElementById("entry-flight_time").innerHTML += "' . $flight_duration . '"; }); </script>';
         else:
-            if ($trips === 1) {
+            if ($trips === 1) { // One-way
                 $airline = $this->get_airlines_div($this->airline);
                 $departing_time = substr($this->departing_at[0], 11, 5);
                 $flight_duration = $this->get_flight_duration($this->departing_at[0], $this->arriving_at[0]);
@@ -363,7 +385,7 @@ class Offer
                             console.log(document.getElementById("flightResults"));
                         });
                 </script>';
-            } else {
+            } else {    // Multiple trips and return flights (TODO: Integrate Multi trip flights).
                 $div_id = rand();
                 $flight_tag = rand();
                 $departing_time = substr($this->departing_at[0], 11, 5);
@@ -393,6 +415,7 @@ class Offer
         endif;
     }
 
+    // Func. to compare $input_airline with airlines (private class array). 
     public function compare_airline($input_airline) 
     {
         $index = 0;
@@ -406,6 +429,9 @@ class Offer
         return 1;
     }
 
+    /**
+     *  Get flight duration 
+    */
     private function get_flight_duration($departing_at, $arriving_at)
     {
         $depart_date_string = substr($departing_at, 0, 10) . "  " . substr($departing_at, 11, 5);
@@ -417,6 +443,9 @@ class Offer
         return $interval->format("%H:%I:%S");
     }
 
+    /**
+     *  Func. that returns a html img tag based on the airlines given (input). 
+    */
     private function get_airlines_div($airlines)
     {
         $div = "";
@@ -432,6 +461,9 @@ class Offer
         return $div;
     }
 
+    /**
+     * Aux. func. to get_airlines_div
+     */
     private function get_airline_logo_name($airline) {
         switch ($airline) {
             case 'Duffel Airways':
@@ -490,6 +522,10 @@ class Offer
         }
     }
 
+    /**
+     * Returns html code that represents the intermediate
+     * flights shown.
+     */
     private function get_intermediate_flights($flight_tag)
     {
         $div = "";
@@ -508,6 +544,9 @@ class Offer
         return $div;
     }
 
+    /**
+     * Returns js code for the intermediate flights.
+     */
     private function get_intermediate_flights_scripts($flight_tag) 
     {
         //  Subflight ID -> $flight_tag_$index
@@ -527,11 +566,23 @@ class Offer
     }
 }
 
-// ###### Duffel Offer Request ######
 /*
     TODO:
         --> Error Handeling
 */
+/** ###### Duffel Offer Request ######
+ * Prerequisite: Slices, Passengers, Cabin Class
+ * 
+ * Offer request class used
+ * to send the main POST request
+ * to Duffel that returns the 
+ * available offers that follow
+ * the given slices/passengers/cabin class
+ * constraints. 
+ * 
+ * const MAX_OFFERS is used to
+ * limit the number of offers returned.
+ */
 class Offer_request
 {
     private $slices;
@@ -550,6 +601,9 @@ class Offer_request
         $this->offer_request_id = "";
     }
 
+    /**
+     * Get payload being sent to Duffel.
+     */
     public function get_post_data()
     {
         $post_data = array(
@@ -567,7 +621,10 @@ class Offer_request
     }
 
     /**
-     * Returns Offers (class array)
+     * Returns Offers (class array), sends
+     * an offer request (POST) to Duffel,
+     * the payload must include slices,
+     * passengers, and cabin_class.
      */
     public function get_offer_request()
     {
@@ -604,6 +661,9 @@ class Offer_request
         curl_close($ch);
     }
 
+    /**
+     * Get TTL based on input, Offers expire over time.
+     */
     public function get_offer_ttl($offer_created_at, $offer_expires_at)
     {
         $created_at_date_string = substr($offer_created_at, 0, 10) . "  " . substr($offer_created_at, 11, 5);
@@ -622,6 +682,13 @@ class Offer_request
              \
               --> 1 total_amount per offer
     */
+    /**
+     * Function used to transverse
+     * the data received from Duffel.
+     * Using this data, Offers are 
+     * created and saved in a global array
+     * ($offers).
+     */
     private function walk_data($data)
     {
         // ### Offers ###
@@ -737,6 +804,10 @@ class Offer_request
         return $this->offers;
     }
 
+    /**
+     * Offer information sanitization
+     * and creation using the Offer class.
+     */
     private function create_offer($offer_id, $offer_ttl, $source_iata_code, $source_airport, $source_terminal, $destination_iata_code, $destination_airport, $destination_terminal, $departing_at, $arriving_at, $airline, $total_amount)
     {
         $size_arr = count($source_iata_code);
@@ -768,9 +839,18 @@ class Offer_request
 }
 
 // ###### Duffel Offer request arguments ######
-
-// ###### Slices ######
-
+/** ###### Slices ######
+ * Slices class, holds each
+ * flight in an offer.
+ * 
+ * json_slice holds the info.
+ * about a single flight in which
+ * origin and destination are both 
+ * represented using the IATA code 
+ * of the neares airport based on the
+ * input city (WordPress, flight-booking),
+ * departure date is also needed.
+ */
 class Slices
 {
     private $slices_list;
@@ -796,8 +876,16 @@ class Slices
     }
 }
 
-// ###### Passengers ######
-
+/** ###### Passengers ######
+ * Passenger class, used to represent
+ * each passenger using json_age.
+ * 
+ * json_age holds each passengers age
+ * based on input ($adults -> number of
+ * adults, $children -> number of children,
+ * $children_age -> array of integers).
+ */
+// TODO: Revise Passengers children allocation.
 class Passengers
 {
     private $age_arr;

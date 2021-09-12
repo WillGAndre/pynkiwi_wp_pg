@@ -26,9 +26,8 @@ include_once(plugin_dir_path(__FILE__) . 'comp/aux.php');
 // Classes - Slices, Passengers, Offer Request, Offers
 include_once(plugin_dir_path(__FILE__) . 'comp/classes.php');
 
-$hashmap_offers = array();
+$hashmap_offers = array();  // Global offers hasmap (index -> offer id, value -> offer)
 
-// (isset($_POST['hidden_submit']))
 if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     $first_date = $_POST['input-date-first'];
     $second_date = $_POST['input-date-second'];
@@ -100,10 +99,21 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
 }
 
 // Offer ID --> $_POST['offer_submit']
+/**
+ * On Offer price click proc check_user.
+ */
 if (isset($_POST['flight-price'])) {
     add_action('init', 'check_user');
 }
 
+/**
+ * Checks if user is logged in, if so,
+ * the user is redirected to his account
+ * page with a main offer dashboard
+ * where he can further customize his offer
+ * and pay. The redirect url is sent with the
+ * offer_id saved in 'offer_submit'.
+ */
 function check_user()
 {
     if (is_user_logged_in()) :
@@ -112,7 +122,7 @@ function check_user()
             'page_id' => 2475,
             'offer_id' => $_POST['offer_submit']
         )));
-    else :
+    else : // TODO: !
         header('Location: https://pynkiwi.wpcomstaging.com/?page_id=2478');
         console_log('user not logged in');
     endif;
@@ -120,6 +130,11 @@ function check_user()
 
 
 // Trigger -> onclick of offer price button (redirect to account)
+/**
+ * Upon receiving a redirect with a offer_id as 
+ * a query argument, print offer options information 
+ * as well as payment info.
+ */
 if (isset($_GET['offer_id'])) {
     alert('Received offer id from url query');
     $offer_id = $_GET['offer_id'];
