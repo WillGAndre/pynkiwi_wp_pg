@@ -137,9 +137,14 @@ function check_user()
  */
 if (isset($_GET['offer_id'])) {
     alert('Received offer id from url query');
+    show_current_offer();
     $offer_id = $_GET['offer_id'];
     $single_offer = new Single_Offer($offer_id);
     $single_offer->get_single_offer();
     $single_offer->print_single_offer_html();
     $single_offer->print_single_offer_opts_html();
+}
+
+function show_current_offer() { // TODO: Make current offer tab responsive
+    echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("main_dash").style.display = "block"; }); </script>';
 }

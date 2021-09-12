@@ -228,7 +228,7 @@ class Offer_Payment_Info
     /**
      * Function to print html (echo from php) in /account
      * TODO:
-     *     *-> Add support for additional bags (add segments returned from duffel as parameter to this class).
+     *     *-> Add support for additional bags (check segments returned from duffel and assign those segments).
      *     *-> Add support for seat selection.
      *     *-> Add offer payment support (also in wordpress).
      *          \
