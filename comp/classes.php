@@ -90,7 +90,7 @@ class Single_Offer
 
         $this->offer = $this->create_offer($data->id, $data->slices, $data->created_at, $data->expires_at);
         $this->offer_payment_info = new Offer_Payment_Info(
-            $total_amount, $tax_amount, $payment_req, 
+            $this->passenger_info, $total_amount, $tax_amount, $payment_req, 
             $pass_id_doc_req, $conds, $base_amount,
             $available_services, $allowed_pass_id_doc_types
         );
@@ -203,6 +203,9 @@ class Single_Offer
  */
 class Offer_Payment_Info
 {
+    // Add Segments ids
+    private $passenger_info;
+
     private $total_amount;
     private $tax_amount; // plus currency
     private $payment_requirements;
@@ -212,9 +215,10 @@ class Offer_Payment_Info
     private $available_services;
     private $allowed_passenger_identity_document_types;
 
-    public function __construct($total_amount, $tax_amount, $payment_req, 
+    public function __construct($passenger_info, $total_amount, $tax_amount, $payment_req, 
     $passenger_id_doc_req, $conds, $base_amount, $services, $allowed_pass_id_docs)
     {
+        $this->passenger_info = $passenger_info;
         $this->total_amount = $total_amount;
         $this->tax_amount = $tax_amount;
         $this->payment_requirements = $payment_req;
@@ -237,7 +241,7 @@ class Offer_Payment_Info
      */
     public function print_html() {
         $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
-        $script = $this->get_refund_change_scripts($init_script);
+        $script = $this->get_refund_change_scripts($init_script) . $this->get_passenger_count_script();
         $script = $script . '}); </script>';
         echo $script;
     }
@@ -267,6 +271,14 @@ class Offer_Payment_Info
         }
         
         return $script;
+    }
+
+    /**
+     * Returns number of passengers in current offer.
+     * Will be use by element with id: pass_count.
+     */
+    private function get_passenger_count_script() {
+        return 'document.getElementById("pass_count").innerHTML = "0/' . count($this->passenger_info) . ' Passengers"';
     }
 }
 
@@ -353,13 +365,13 @@ class Offer
             if ($trips === 1) {
                 $init_script = $init_script . 'document.getElementById("sub_flights").style.display = "none"; ';
             } else {
-                // subtrips
+                // subtrip
                 $index = 1;
                 while ($index < $trips) {
                     $depart_date_string = substr($this->departing_at[$index], 0, 10) . "  " . substr($this->departing_at[$index], 11, 5);
                     $arrive_date_string = substr($this->arriving_at[$index], 0, 10) . "  " . substr($this->arriving_at[$index], 11, 5);
                     $flight_duration = $this->get_flight_duration($depart_date_string, $arrive_date_string);
-                    $init_script = $init_script . 'document.getElementById("sub_flights").onclick = function(event) { document.getElementById("flight_info").innerHTML += "<div id=\'flight_info_content\'><div class=\'entry top\'><div class=\'title\'>Source:</div><div id=\'entry-source\' class=\'text\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Destination:</div><div id=\'entry-dest\' class=\'text\'>' . $this->destination_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Dep Date:</div><div id=\'entry-dep_date\' class=\'text\'>' . $depart_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Arr Date:</div><div id=\'entry-arr_date\' class=\'text\'>' . $arrive_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Flight time:</div><div id=\'entry-flight_time\' class=\'text\'>' . $flight_duration . '</div></div></div>"; }; ';
+                    $init_script = $init_script . 'document.getElementById("sub_flights").onclick = function(event) { document.getElementById("flight_info").innerHTML += "<div id=\'flight_info_content\'><div class=\'entry top\'><div class=\'title\'>Source:</div><div id=\'entry-source\' class=\'text\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Destination:</div><div id=\'entry-dest\' class=\'text\'>' . $this->destination_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Dep Date:</div><div id=\'entry-dep_date\' class=\'text\'>' . $depart_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Arr Date:</div><div id=\'entry-arr_date\' class=\'text\'>' . $arrive_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Flight time:</div><div id=\'entry-flight_time\' class=\'text\'>' . $flight_duration . '</div></div></div>"; document.getElementById("sub_flights").style.display = "none"; };';
                     $index++;
                 }
             }

@@ -18,6 +18,7 @@ function add_scripts()
 {
     // wp_enqueue_style('plugin-stylesheet', plugins_url('style_results.css', __FILE__));
     wp_enqueue_style('plugin-stylesheet', plugin_dir_url(__FILE__) . 'style/results.css');
+    wp_enqueue_script('plugin-scripts', plugin_dir_url(__FILE__) . 'scripts/passenger_form.js');
 }
 add_action('wp_enqueue_scripts', 'add_scripts');
 
@@ -120,7 +121,7 @@ function check_user()
         console_log('user logged in');
         header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
             'page_id' => 2475,
-            'offer_id' => $_POST['offer_submit']
+            'up_offer_id' => $_POST['offer_submit']
         )));
     else : // TODO: !
         header('Location: https://pynkiwi.wpcomstaging.com/?page_id=2478');
@@ -135,10 +136,10 @@ function check_user()
  * a query argument, print offer options information 
  * as well as payment info.
  */
-if (isset($_GET['offer_id'])) {
+if (isset($_GET['up_offer_id'])) {
     alert('Received offer id from url query');
     show_current_offer();
-    $offer_id = $_GET['offer_id'];
+    $offer_id = $_GET['up_offer_id'];
     $single_offer = new Single_Offer($offer_id);
     $single_offer->get_single_offer();
     $single_offer->print_single_offer_html();
