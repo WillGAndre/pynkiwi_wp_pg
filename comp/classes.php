@@ -24,16 +24,17 @@
  *  returned data back to WP.
  *  Also creates an Offer and Offer_Payment_Info class.
  */
-class Single_Offer
+ class Single_Offer
 {
     private $offer_id;
     private $offer;
     private $offer_payment_info;
-    private $passenger_info;
+    private $passenger_ids;
 
     public function __construct($offer_id)
     {
         $this->offer_id = $offer_id;
+        $this->passenger_ids = array();
     }
 
     public function get_single_offer()
@@ -77,7 +78,10 @@ class Single_Offer
      */
     private function walk_data($data)
     {
-        $this->passenger_info = $data->passengers;
+        // allocate passenger ids
+        foreach($data->passengers as $_ => $content) {
+            array_push($this->passenger_ids, $content->id);
+        }
 
         $total_amount = $data->total_amount . ' ' . $data->total_currency;
         $tax_amount = $data->tax_amount . ' ' . $data->total_currency;
@@ -88,9 +92,12 @@ class Single_Offer
         $available_services = $data->available_services;
         $allowed_pass_id_doc_types = $data->allowed_passenger_identity_document_types;
 
+
         $this->offer = $this->create_offer($data->id, $data->slices, $data->created_at, $data->expires_at);
         $this->offer_payment_info = new Offer_Payment_Info(
-            $this->passenger_info, $total_amount, $tax_amount, $payment_req, 
+            $this->get_segment_ids($data->slices),
+            $this->passenger_ids, 
+            $total_amount, $tax_amount, $payment_req, 
             $pass_id_doc_req, $conds, $base_amount,
             $available_services, $allowed_pass_id_doc_types
         );
@@ -175,6 +182,29 @@ class Single_Offer
         );
     }
 
+    // TODO: Refactor code
+    public function get_segment_ids($slices) {
+        $index = 0;
+        $arr = [];
+
+        foreach($slices as $index => $entry) {
+            foreach($entry as $key => $value) {
+                if ($key === "segments") {
+                    foreach($value as $key2 => $value2) {
+                        foreach($value2 as $key3 => $value3) {
+                            if ($key3 === "id") {
+                                $arr[$index] = $value3;
+                                $index++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return $arr;
+    }
+
     public function get_offer() {
         return $this->offer;
     }
@@ -190,10 +220,6 @@ class Single_Offer
     public function get_offer_payment_info() {
         return $this->offer_payment_info;
     }
-
-    public function get_passengers_info() {
-        return $this->passenger_info;
-    }
 }
 
 /** ###### Offer payment info ######
@@ -203,8 +229,8 @@ class Single_Offer
  */
 class Offer_Payment_Info
 {
-    // Add Segments ids
-    private $passenger_info;
+    private $segment_ids;
+    private $passenger_ids;
 
     private $total_amount;
     private $tax_amount; // plus currency
@@ -215,10 +241,12 @@ class Offer_Payment_Info
     private $available_services;
     private $allowed_passenger_identity_document_types;
 
-    public function __construct($passenger_info, $total_amount, $tax_amount, $payment_req, 
+    public function __construct(
+    $segment_ids, $passenger_ids, $total_amount, $tax_amount, $payment_req, 
     $passenger_id_doc_req, $conds, $base_amount, $services, $allowed_pass_id_docs)
     {
-        $this->passenger_info = $passenger_info;
+        $this->segment_ids = $segment_ids;
+        $this->passenger_ids = $passenger_ids;
         $this->total_amount = $total_amount;
         $this->tax_amount = $tax_amount;
         $this->payment_requirements = $payment_req;
@@ -242,8 +270,60 @@ class Offer_Payment_Info
     public function print_html() {
         $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
         $script = $this->get_refund_change_scripts($init_script) . $this->get_passenger_count_script();
-        $script = $script . '}); </script>';
+        $script = $script . $this->get_additional_baggage_scripts() . '}); </script>';
         echo $script;
+    }
+
+    // TODO: Testing, offer with more than two flights.
+    /**
+     * Get js additional baggage scripts.
+     */
+    private function get_additional_baggage_scripts() {
+        $flag_add_baggage = 0;
+        $printed_seg = array();
+        $init_code = 'document.getElementById("add-bags_text").innerHTML = "<span style=\'color:red\'>*</span> Supported flights"; ';
+        $code = $init_code . 'document.getElementById("add_baggage").innerHTML += "';
+
+        foreach($this->available_services as $_ => $content) {
+            if ($content->type === "baggage") {
+                $returned_pas_id = $content->passenger_ids[0];
+
+                if (in_array($returned_pas_id, $this->passenger_ids)) {
+                    $flag_add_baggage = 1;
+                    $max_quantity = $content->maximum_quantity;
+                    $total_price = $content->total_amount . ' ' . $content->total_currency;
+                    $returned_seg_ids = $content->segment_ids;
+
+                    foreach($returned_seg_ids as $_ => $returned_seg_id) {
+                        if (in_array($returned_seg_id, $this->segment_ids) && !in_array($returned_seg_id, $printed_seg)) {
+                            $flight_number = array_search($returned_seg_id, $this->segment_ids) + 1;
+                            $code = $code . '<p class=\'p-title\'>Flight Nº' . $flight_number . '</p>';   // Find possible fix for showing 
+                            $code = $code . '<select class=\'input-text\' name=\'baggage\'>';
+                            $i = 0;
+                            while($i <= $max_quantity) {
+                                $code = $code . '<option>' . $i . '</option>';
+                                $i++;
+                            }
+                            $code = $code . '</select><p class=\'p-title\'>' . $total_price . '</p>';
+                            array_push($printed_seg, $returned_seg_id);
+                        }
+                    }
+                }
+            }
+        }
+
+        $code = $code . '"; ' . $this->set_baggage_to_flight($printed_seg);
+        console_log('Services -> Additional Bags: ' . $flag_add_baggage);
+        return $code;
+    }
+
+    private function set_baggage_to_flight($printed_seg) {
+        $code = '';
+        while(count($printed_seg)) {
+            $index = array_search(array_pop($printed_seg), $this->segment_ids);
+            $code = $code . 'document.getElementById("flight_' . $index . '").innerHTML += "<div class=\'entry top smaller\'><span style=\'color:red\'>*</span></div>"; ';
+        }
+        return $code;
     }
 
     /**
@@ -254,7 +334,9 @@ class Offer_Payment_Info
         $refund_before_departure = $this->conditions->refund_before_departure;
         $change_before_departure = $this->conditions->change_before_departure;
 
-        console_log('Refunds: ' . $refund_before_departure->allowed);
+        $flag_ref = 0;
+        if ($refund_before_departure->allowed) {$flag_ref = 1;}
+        console_log('Refunds: ' . $flag_ref);
         if ($refund_before_departure !== NULL && $refund_before_departure->allowed) {
             $refund_penalty_amount = $refund_before_departure->penalty_amount . ' ' . $refund_before_departure->penalty_currency;
             $script = $script . 'document.getElementById("entry-ref_price").innerHTML += "' . $refund_penalty_amount . '";';
@@ -262,7 +344,9 @@ class Offer_Payment_Info
             $script = $script . 'document.getElementById("entry-ref").style.display = "none";';
         }
 
-        console_log('Changes: ' . $change_before_departure->allowed);
+        $flag_chg = 0;
+        if ($change_before_departure->allowed) {$flag_chg = 1;}
+        console_log('Changes: ' . $flag_chg);
         if ($change_before_departure !== NULL && $change_before_departure->allowed) {
             $change_penalty_amount = $change_before_departure->penalty_amount . ' ' . $change_before_departure->penalty_currency;
             $script = $script . 'document.getElementById("entry-chg_price").innerHTML += "' . $change_penalty_amount . '";';
@@ -278,7 +362,7 @@ class Offer_Payment_Info
      * Will be use by element with id: pass_count.
      */
     private function get_passenger_count_script() {
-        return 'document.getElementById("pass_count").innerHTML = "0/' . count($this->passenger_info) . ' Passengers"';
+        return 'document.getElementById("pass_count").innerHTML = "0/' . count($this->passenger_ids) . ' Passengers"; ';
     }
 }
 
@@ -371,7 +455,8 @@ class Offer
                     $depart_date_string = substr($this->departing_at[$index], 0, 10) . "  " . substr($this->departing_at[$index], 11, 5);
                     $arrive_date_string = substr($this->arriving_at[$index], 0, 10) . "  " . substr($this->arriving_at[$index], 11, 5);
                     $flight_duration = $this->get_flight_duration($depart_date_string, $arrive_date_string);
-                    $init_script = $init_script . 'document.getElementById("sub_flights").onclick = function(event) { document.getElementById("flight_info").innerHTML += "<div id=\'flight_info_content\'><div class=\'entry top\'><div class=\'title\'>Source:</div><div id=\'entry-source\' class=\'text\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Destination:</div><div id=\'entry-dest\' class=\'text\'>' . $this->destination_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Dep Date:</div><div id=\'entry-dep_date\' class=\'text\'>' . $depart_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Arr Date:</div><div id=\'entry-arr_date\' class=\'text\'>' . $arrive_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Flight time:</div><div id=\'entry-flight_time\' class=\'text\'>' . $flight_duration . '</div></div></div>"; document.getElementById("sub_flights").style.display = "none"; };';
+                    $init_script = $init_script . 'document.getElementById("flight_info").innerHTML += "<div id=\'flight_' . $index . '\' class=\'flight_info_content\'><div class=\'entry top\'><div class=\'title\'>Source:</div><div id=\'entry-source\' class=\'text\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Destination:</div><div id=\'entry-dest\' class=\'text\'>' . $this->destination_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Dep Date:</div><div id=\'entry-dep_date\' class=\'text\'>' . $depart_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Arr Date:</div><div id=\'entry-arr_date\' class=\'text\'>' . $arrive_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Flight time:</div><div id=\'entry-flight_time\' class=\'text\'>' . $flight_duration . '</div></div></div>"; document.getElementById("flight_' . $index . '").style.display = "none";';
+                    $init_script = $init_script . 'document.getElementById("sub_flights").onclick = function(event) { document.getElementById("flight_' . $index . '").style.display = "flex"; document.getElementById("sub_flights").style.display = "none"; };';
                     $index++;
                 }
             }

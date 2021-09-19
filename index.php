@@ -17,8 +17,10 @@
 function add_scripts()
 {
     // wp_enqueue_style('plugin-stylesheet', plugins_url('style_results.css', __FILE__));
-    wp_enqueue_style('plugin-stylesheet', plugin_dir_url(__FILE__) . 'style/results.css');
-    wp_enqueue_script('plugin-scripts', plugin_dir_url(__FILE__) . 'scripts/passenger_form.js');
+    wp_enqueue_style('plugin-flight-search-stylesheet', plugin_dir_url(__FILE__) . 'style/flight_search.css');
+    wp_enqueue_style('plugin-flight-search-results-stylesheet', plugin_dir_url(__FILE__) . 'style/flight_search_results.css');
+    wp_enqueue_script('plugin-flight-search-calender-scripts', plugin_dir_url(__FILE__) . 'scripts/flight_search_calender.js');
+    wp_enqueue_script('plugin-passenger-form-scripts', plugin_dir_url(__FILE__) . 'scripts/passenger_form.js');
 }
 add_action('wp_enqueue_scripts', 'add_scripts');
 
