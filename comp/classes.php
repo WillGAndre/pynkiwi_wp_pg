@@ -297,7 +297,7 @@ class Offer_Payment_Info
                     foreach($returned_seg_ids as $_ => $returned_seg_id) {
                         if (in_array($returned_seg_id, $this->segment_ids) && !in_array($returned_seg_id, $printed_seg)) {
                             $flight_number = array_search($returned_seg_id, $this->segment_ids) + 1;
-                            $code = $code . '<p class=\'p-title\'>Flight Nº' . $flight_number . '</p>';   // Find possible fix for showing 
+                            $code = $code . '<p class=\'p-title\'>Flight Nº' . $flight_number . '</p>';
                             $code = $code . '<select class=\'input-text\' name=\'baggage\'>';
                             $i = 0;
                             while($i <= $max_quantity) {
@@ -321,7 +321,7 @@ class Offer_Payment_Info
         $code = '';
         while(count($printed_seg)) {
             $index = array_search(array_pop($printed_seg), $this->segment_ids);
-            $code = $code . 'document.getElementById("flight_' . $index . '").innerHTML += "<div class=\'entry top smaller\'><span style=\'color:red\'>*</span></div>"; ';
+            $code = $code . 'document.getElementById("flight_' . $index . '").innerHTML += "<div class=\'entry top\'><span style=\'color:red\'>*</span></div>"; ';
         }
         return $code;
     }
@@ -455,7 +455,7 @@ class Offer
                     $depart_date_string = substr($this->departing_at[$index], 0, 10) . "  " . substr($this->departing_at[$index], 11, 5);
                     $arrive_date_string = substr($this->arriving_at[$index], 0, 10) . "  " . substr($this->arriving_at[$index], 11, 5);
                     $flight_duration = $this->get_flight_duration($depart_date_string, $arrive_date_string);
-                    $init_script = $init_script . 'document.getElementById("flight_info").innerHTML += "<div id=\'flight_' . $index . '\' class=\'flight_info_content\'><div class=\'entry top\'><div class=\'title\'>Source:</div><div id=\'entry-source\' class=\'text\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Destination:</div><div id=\'entry-dest\' class=\'text\'>' . $this->destination_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Dep Date:</div><div id=\'entry-dep_date\' class=\'text\'>' . $depart_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Arr Date:</div><div id=\'entry-arr_date\' class=\'text\'>' . $arrive_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Flight time:</div><div id=\'entry-flight_time\' class=\'text\'>' . $flight_duration . '</div></div></div>"; document.getElementById("flight_' . $index . '").style.display = "none";';
+                    $init_script = $init_script . 'document.getElementById("flight_info").innerHTML += "<div id=\'flight_' . $index . '\' class=\'flight_info_content\'><div class=\'entry top\'><div class=\'title\'>Source:</div><div id=\'entry-source\' class=\'text imp\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Destination:</div><div id=\'entry-dest\' class=\'text imp\'>' . $this->destination_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Dep Date:</div><div id=\'entry-dep_date\' class=\'text imp\'>' . $depart_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Arr Date:</div><div id=\'entry-arr_date\' class=\'text imp\'>' . $arrive_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Flight time:</div><div id=\'entry-flight_time\' class=\'text imp\'>' . $flight_duration . '</div></div></div>"; document.getElementById("flight_' . $index . '").style.display = "none";';
                     $init_script = $init_script . 'document.getElementById("sub_flights").onclick = function(event) { document.getElementById("flight_' . $index . '").style.display = "flex"; document.getElementById("sub_flights").style.display = "none"; };';
                     $index++;
                 }

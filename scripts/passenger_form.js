@@ -14,6 +14,16 @@
 
 let passenger_list = [];
 
+// TODO!
+function send_payment() {
+    let max_psgs = document.getElementById("pass_count").innerHTML[2];
+    if (passenger_list.length == max_psgs) {
+        window.location.href = "https://pynkiwi.wpcomstaging.com/?page_id=2475";
+    } else {
+        alert('Missing passenger information!');
+    }
+}
+
 function refresh() {
     console.log('Deleting passenger list');
     while (passenger_list.length) {
@@ -46,7 +56,7 @@ function add_passenger() {
         document.getElementById("pass_count").innerHTML = passenger_list.length + "/" + max_psgs + " Passengers";
         clear_form();
         console.log('Added new passenger - Current list count: ' + passenger_list.length); 
-    }
+    } 
 }
 
 class Passenger {
@@ -71,7 +81,7 @@ class Passenger {
         let postcode_input_re = /^([0-9]+)-([0-9]+)$/;
         let error_log = document.getElementById('error-log');
 
-        this.debug_input(text_input_re, email_input_re, phone_input_re, postcode_input_re);
+        // this.debug_input(text_input_re, email_input_re, phone_input_re, postcode_input_re);
         if (!text_input_re.test(this.title+' '+this.first_name+' '+this.last_name) || !phone_input_re.test(this.phone) || !email_input_re.test(this.email) || !text_input_re.test(this.city) || !postcode_input_re.test(this.postcode)) {
             let elem = document.createElement('p');
             elem.innerHTML = "Input data not valid!";
