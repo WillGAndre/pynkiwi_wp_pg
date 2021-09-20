@@ -139,7 +139,6 @@ function check_user()
  * as well as payment info.
  */
 if (isset($_GET['up_offer_id'])) {
-    alert('Received offer id from url query');
     show_current_offer();
     $offer_id = $_GET['up_offer_id'];
     $single_offer = new Single_Offer($offer_id);

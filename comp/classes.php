@@ -78,10 +78,7 @@
      */
     private function walk_data($data)
     {
-        // allocate passenger ids
-        foreach($data->passengers as $_ => $content) {
-            array_push($this->passenger_ids, $content->id);
-        }
+        $this->allocate_passenger_ids($data->passengers);
 
         $total_amount = $data->total_amount . ' ' . $data->total_currency;
         $tax_amount = $data->tax_amount . ' ' . $data->total_currency;
@@ -182,6 +179,36 @@
         );
     }
 
+    /**
+     * Sets passenger ids in $this->passenger_ids,
+     * prints passenger id/type in (hidden) div and
+     * checks for infants (0 or 1) if there are any
+     * then an input checkbox will be shown. This
+     * checkbox should only be set if passenger is 
+     * an adult (js).
+     */
+    private function allocate_passenger_ids($passengers) {
+        $code = '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("pass_ids").innerHTML += "';
+        $index = 0;
+        $infant_flag = 0;
+        foreach($passengers as $_ => $content) {
+            if ($content->age === 0 || $content->age == 1) {
+                $infant_flag = 1;
+            }
+
+            array_push($this->passenger_ids, $content->id);
+            $code = $code . '<div id=\'pass_' . $index . '_id\'>' . $content->id . '</div>';
+            $code = $code . '<div id=\'pass_' . $index . '_type\'>' . $content->type . '</div>';
+            $index++;
+        }
+        $code = $code . '"; ';
+        if ($infant_flag) {
+            $code = $code . 'document.getElementById("pass_disclaimer").innerHTML += "<div id=\'infant-discl\' class=\'entry top\'><input id=\'infant-input\' type=\'checkbox\' name=\'infant-checkbox\'><label for=\'infant-checkbox\'>Select if passenger responsible for infant.</label></div>"; ';
+        }
+        $code = $code . ' }); </script>';
+        echo $code;
+    }
+
     // TODO: Refactor code
     public function get_segment_ids($slices) {
         $index = 0;
@@ -265,7 +292,6 @@ class Offer_Payment_Info
      *     *-> Add offer payment support (also in wordpress).
      *          \
      *           --> Reformat passenger form and use data to send payment options.
-     *     *-> Add payment support for sub flights.
      */
     public function print_html() {
         $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
@@ -317,6 +343,13 @@ class Offer_Payment_Info
         return $code;
     }
 
+    /**
+     * Set red asterisk in flight
+     * that supports additional baggage.
+     * Indexation (of the flights) in 
+     * $this->segment_ids is the same
+     * as the one specified in the current offer.
+     */
     private function set_baggage_to_flight($printed_seg) {
         $code = '';
         while(count($printed_seg)) {
@@ -1006,7 +1039,7 @@ class Passengers
             $index = 0;
             while($children--) {
                 $age = intval(substr($children_age, $index, 2)); // ex: 12, 14
-                if ($age < 1 || $age > 18) {
+                if ($age > 18) {
                     alert('Children Age not valid, format ex: 12, 14, 17.');
                     exit(0);
                 }
