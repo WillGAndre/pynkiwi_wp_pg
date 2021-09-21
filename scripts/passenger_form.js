@@ -60,16 +60,18 @@ function check_age() {
     console.log('Input date: '+input_date+' ; Age: '+age);
     let infant_discl = document.getElementById("infant-discl");
     let services = document.getElementById('services'); 
-    if (age <= 1) {
-        infant_discl.style.opacity = 0.22;
-        infant_discl.disabled = true;
-        services.style.opacity = 0.22;
-        services.disabled = true;
-    } else {
-        infant_discl.style.opacity = 1;
-        infant_discl.disabled = false;
-        services.style.opacity = 1;
-        services.disabled = false;
+    if (infant_discl != null && services != null) {
+        if (age <= 1) {
+            infant_discl.style.opacity = 0.22;
+            infant_discl.disabled = true;
+            services.style.opacity = 0.22;
+            services.disabled = true;
+        } else {
+            infant_discl.style.opacity = 1;
+            infant_discl.disabled = false;
+            services.style.opacity = 1;
+            services.disabled = false;
+        }
     }
 }
 
@@ -127,6 +129,9 @@ function add_passenger() {
         if (document.getElementById('entry-add-bags') != null) {
             // TODO: services should also include the service id.
             services = document.getElementById('entry-add-bags').value;
+            ids = document.getElementById('seg_ids').innerHTML;
+            console.log('services: '+services);
+            console.log('ids: '+ids);
         }
     }
     

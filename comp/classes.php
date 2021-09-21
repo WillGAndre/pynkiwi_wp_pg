@@ -300,7 +300,7 @@ class Offer_Payment_Info
         echo $script;
     }
 
-    // TODO: Testing, offer with more than two flights.
+    // TODO: Testing, offer with more than two sub flights.
     /**
      * Get js additional baggage scripts.
      * Checks if all flights support
@@ -313,6 +313,8 @@ class Offer_Payment_Info
         $printed_seg = array();
         $single_flights_init =
         'document.getElementById("add-bags_text").innerHTML = "<span style=\'color:red\'>*</span> Supported flights"; ';
+        $service_ids = 
+        'document.getElementById("seg_ids").innerHTML += "';
         $code = 'document.getElementById("add_baggage").innerHTML += "';
 
         foreach($this->available_services as $_ => $content) {
@@ -320,6 +322,7 @@ class Offer_Payment_Info
                 $returned_pas_id = $content->passenger_ids[0];
 
                 if (in_array($returned_pas_id, $this->passenger_ids)) {
+                    $service_ids = $service_ids . $content->id . ' ';
                     $flag_add_baggage = 1;
                     $max_quantity = $content->maximum_quantity;
                     $total_price = $content->total_amount . ' ' . $content->total_currency;
@@ -363,6 +366,7 @@ class Offer_Payment_Info
         } else {
             $code = $code . '"; ';
         }
+        $code = $service_ids . '"; ' . $code;
         console_log('Services -> Additional Bags: ' . $flag_add_baggage);
         return $code;
     }
