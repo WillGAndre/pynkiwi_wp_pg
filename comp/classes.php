@@ -301,20 +301,19 @@ class Offer_Payment_Info
     }
 
     // TODO: Testing, offer with more than two flights.
-    /* 
-    TODO: If every segment in the offer
-          includes additional baggage,
-          print a single select tag.
-          If not, print multiple. 
-    */
     /**
      * Get js additional baggage scripts.
+     * Checks if all flights support
+     * additional baggages, if so
+     * count of array diff will be 0.
      */
     private function get_additional_baggage_scripts() {
         $flag_add_baggage = 0;
+        $input_type = 0; // 0 -> input for all flights | 1 -> various inputs
         $printed_seg = array();
-        $init_code = 'document.getElementById("add-bags_text").innerHTML = "<span style=\'color:red\'>*</span> Supported flights"; ';
-        $code = $init_code . 'document.getElementById("add_baggage").innerHTML += "';
+        $single_flights_init =
+        'document.getElementById("add-bags_text").innerHTML = "<span style=\'color:red\'>*</span> Supported flights"; ';
+        $code = 'document.getElementById("add_baggage").innerHTML += "';
 
         foreach($this->available_services as $_ => $content) {
             if ($content->type === "baggage") {
@@ -326,25 +325,44 @@ class Offer_Payment_Info
                     $total_price = $content->total_amount . ' ' . $content->total_currency;
                     $returned_seg_ids = $content->segment_ids;
 
-                    foreach($returned_seg_ids as $_ => $returned_seg_id) {
-                        if (in_array($returned_seg_id, $this->segment_ids) && !in_array($returned_seg_id, $printed_seg)) {
-                            $flight_number = array_search($returned_seg_id, $this->segment_ids) + 1;
-                            $code = $code . '<div class=\'segments_available\'><p class=\'p-title\'>Flight Nº' . $flight_number . '</p>';
-                            $code = $code . '<select id=\'entry-add-bags\' class=\'input-text\' name=\'baggage\'>';
-                            $i = 0;
-                            while($i <= $max_quantity) {
-                                $code = $code . '<option>' . $i . '</option>';
-                                $i++;
+                    // NOTE: DONT FORGET TO MULTIPLY $total_price per quantity selected, before sending request to Duffel.
+                    if (count(array_diff($this->segment_ids, $returned_seg_ids)) == 0) {
+                        $code = $code . '<div class=\'segments_available\'><p class=\'p-title\'>All flights</p>';
+                        $code = $code . '<select id=\'entry-add-bags\' class=\'input-text\' name=\'baggage\'>';
+                        $i = 0;
+                        while ($i <= $max_quantity) {
+                            $code = $code . '<option>' . $i . '</option>';
+                            $i++;
+                        }
+                        $code = $code . '</select><p class=\'p-title\'>' . $total_price . '</p></div>';
+                        $printed_seg = array_merge($printed_seg, $returned_seg_ids);
+                    } else {
+                        $input_type = 1;
+                        $code = $single_flights_init . $code;
+                        foreach($returned_seg_ids as $_ => $returned_seg_id) {
+                            if (in_array($returned_seg_id, $this->segment_ids) && !in_array($returned_seg_id, $printed_seg)) {
+                                $flight_number = array_search($returned_seg_id, $this->segment_ids) + 1;
+                                $code = $code . '<div class=\'segments_available\'><p class=\'p-title\'>Flight Nº' . $flight_number . '</p>';
+                                $code = $code . '<select id=\'entry-add-bags\' class=\'input-text\' name=\'baggage\'>';
+                                $i = 0;
+                                while($i <= $max_quantity) {
+                                    $code = $code . '<option>' . $i . '</option>';
+                                    $i++;
+                                }
+                                $code = $code . '</select><p class=\'p-title\'>' . $total_price . '</p></div>';
+                                array_push($printed_seg, $returned_seg_id);
                             }
-                            $code = $code . '</select><p class=\'p-title\'>' . $total_price . '</p></div>';
-                            array_push($printed_seg, $returned_seg_id);
                         }
                     }
                 }
             }
         }
 
-        $code = $code . '"; ' . $this->set_baggage_to_flight($printed_seg);
+        if ($input_type) {
+            $code = $code . '"; ' . $this->set_baggage_to_flight($printed_seg);
+        } else {
+            $code = $code . '"; ';
+        }
         console_log('Services -> Additional Bags: ' . $flag_add_baggage);
         return $code;
     }
@@ -1021,7 +1039,6 @@ class Slices
  * adults, $children -> number of children,
  * $children_age -> array of integers).
  */
-// TODO: Revise Passengers children allocation.
 class Passengers
 {
     private $age_arr;
@@ -1044,7 +1061,8 @@ class Passengers
         if (!empty($children)) {
             $index = 0;
             while($children--) {
-                $age = intval(substr($children_age, $index, 2)); // ex: 12, 14
+                $age_str = substr($children_age, $index, 2);
+                $age = intval($age_str); // ex1: 12, 14 | ex2: 0, 4, 5
                 if ($age > 18) {
                     alert('Children Age not valid, format ex: 12, 14, 17.');
                     exit(0);
@@ -1052,7 +1070,11 @@ class Passengers
                 $this->json_age = new stdClass();
                 $this->json_age->age = $age;
                 array_push($this->age_arr, $this->json_age);
-                $index += 4;
+                if (strpos($age_str, ',')) {
+                    $index += 2;
+                } else {
+                    $index += 4;
+                }
             }
         }
     }
