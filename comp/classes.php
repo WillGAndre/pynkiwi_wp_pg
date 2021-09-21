@@ -192,7 +192,7 @@
         $index = 0;
         $infant_flag = 0;
         foreach($passengers as $_ => $content) {
-            if ($content->age === 0 || $content->age == 1) {
+            if ($content->type === "infant_without_seat") {
                 $infant_flag = 1;
             }
 
@@ -203,7 +203,7 @@
         }
         $code = $code . '"; ';
         if ($infant_flag) {
-            $code = $code . 'document.getElementById("pass_disclaimer").innerHTML += "<div id=\'infant-discl\' class=\'entry top\'><input id=\'infant-input\' type=\'checkbox\' name=\'infant-checkbox\'><label for=\'infant-checkbox\'>Select if passenger responsible for infant.</label></div>"; ';
+            $code = $code . 'document.getElementById("pass_disclaimer").innerHTML += "<div id=\'infant-discl\' class=\'entry top\'><input id=\'infant-input\' type=\'checkbox\' name=\'infant-checkbox\'><label for=\'infant-checkbox\' style=\'font-size: small;\'>Passenger responsible for infant.</label></div>"; ';
         }
         $code = $code . ' }); </script>';
         echo $code;
@@ -301,6 +301,12 @@ class Offer_Payment_Info
     }
 
     // TODO: Testing, offer with more than two flights.
+    /* 
+    TODO: If every segment in the offer
+          includes additional baggage,
+          print a single select tag.
+          If not, print multiple. 
+    */
     /**
      * Get js additional baggage scripts.
      */
@@ -323,14 +329,14 @@ class Offer_Payment_Info
                     foreach($returned_seg_ids as $_ => $returned_seg_id) {
                         if (in_array($returned_seg_id, $this->segment_ids) && !in_array($returned_seg_id, $printed_seg)) {
                             $flight_number = array_search($returned_seg_id, $this->segment_ids) + 1;
-                            $code = $code . '<p class=\'p-title\'>Flight Nº' . $flight_number . '</p>';
-                            $code = $code . '<select class=\'input-text\' name=\'baggage\'>';
+                            $code = $code . '<div class=\'segments_available\'><p class=\'p-title\'>Flight Nº' . $flight_number . '</p>';
+                            $code = $code . '<select id=\'entry-add-bags\' class=\'input-text\' name=\'baggage\'>';
                             $i = 0;
                             while($i <= $max_quantity) {
                                 $code = $code . '<option>' . $i . '</option>';
                                 $i++;
                             }
-                            $code = $code . '</select><p class=\'p-title\'>' . $total_price . '</p>';
+                            $code = $code . '</select><p class=\'p-title\'>' . $total_price . '</p></div>';
                             array_push($printed_seg, $returned_seg_id);
                         }
                     }

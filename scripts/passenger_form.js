@@ -12,9 +12,18 @@
  */
 
 let passenger_list = [];
-let passenger_ids = []; // ids
-let passenger_types = []; // types
-let id_index = 0;
+let passenger_ids = [];
+let passenger_types = [];
+
+/**
+ * Every infant needs to be
+ * allocated to a single 
+ * unique adult, this array
+ * holds each id relative to
+ * an infant. Before payment
+ * this arr must be empty.
+ */
+let infants_not_allocated = [];
 
 let init_flag = 1;
 function init() {
@@ -31,25 +40,36 @@ function get_passenger_ids() {
         let type = document.getElementById("pass_" + index + "_type").innerHTML;
         passenger_ids.push(id);
         passenger_types.push(type);
+        if (type === "infant_without_seat") {
+            infants_not_allocated.push(id);
+        }
         index++;
     }
 }
 
+/**
+ * Function triggered onchange of input[type="date"],
+ * if current passenger age <= 1 (infant), remove
+ * services and infant checkbox.
+ */
 function check_age() {
     console.log('\t- Checking age');
     let input_date = document.getElementById('entry-bday').value;
-    let curr_date = new Date();
-    input_date = new Date(input_date);
-    let age = curr_date.getFullYear() - input_date.getFullYear();
-    let months = curr_date.getMonth() - input_date.getMonth();
-    
-    if (months < 0 || (months == 0 && curr_date.getDate() < input_date.getDate())) {
-        age--;
-    }
+    let age = get_age(input_date);
 
+    console.log('Input date: '+input_date+' ; Age: '+age);
+    let infant_discl = document.getElementById("infant-discl");
+    let services = document.getElementById('services'); 
     if (age <= 1) {
-        let infant_discl = document.getElementById("infant-discl");
         infant_discl.style.opacity = 0.22;
+        infant_discl.disabled = true;
+        services.style.opacity = 0.22;
+        services.disabled = true;
+    } else {
+        infant_discl.style.opacity = 1;
+        infant_discl.disabled = false;
+        services.style.opacity = 1;
+        services.disabled = false;
     }
 }
 
@@ -79,20 +99,56 @@ function add_passenger() {
         init();
         init_flag--;
     }
+
+    let birthday = document.getElementById('entry-bday').value;
+    let age = get_age(birthday);
+    let id = "";
+    let services = "";
+    let infant_id = "";
+    let index = -1;
+
+    if (age <= 1) { // infant_without_seat
+        index = get_index('infant_without_seat');
+    } else {
+        if (age < 14) { // child
+            index = get_index('child');
+        } else { // adult
+            index = get_index('adult');
+            if (infants_not_allocated.length && document.getElementById("infant-input").checked) {
+                /* ATM infant's are being allocated
+                   in a FIFO manner. In the future
+                   each adult should be able to choose
+                   between multiple infants.
+                */
+                infant_id = infants_not_allocated.pop();
+                console.log('\t- Infant allocated to adult');
+            }
+        }
+        if (document.getElementById('entry-add-bags') != null) {
+            // TODO: services should also include the service id.
+            services = document.getElementById('entry-add-bags').value;
+        }
+    }
+    
+    if (index != -1) {
+        id = passenger_ids[index];
+        passenger_ids.splice(index, 1);
+        passenger_types.splice(index, 1);
+    }
+
     let title = document.getElementById('entry-title').value;
     let first_last_name = document.getElementById('entry-name').value;
     let gender = document.getElementById('entry-gender').value;
     let email = document.getElementById('entry-mail').value;
-    let birthday = document.getElementById('entry-bday').value;
     let postcode = document.getElementById('entry-postcode').value;
     let city = document.getElementById('entry-city').value;
     let phone = document.getElementById('entry-phone').value;
-    let services = ""; // TODO
 
     let psg = new Passenger(
-        title, first_last_name, gender,
-        email, phone, birthday, 
-        city, postcode, services
+        id, title, first_last_name, 
+        gender, email, phone, 
+        birthday, city, postcode, 
+        services, infant_id
     );
     let max_psgs = document.getElementById("pass_count").innerHTML[2];
     if (psg.sanitize_input() && passenger_list.length < max_psgs) {
@@ -104,9 +160,10 @@ function add_passenger() {
 }
 
 class Passenger {
-    constructor(id, title, name, gender,
-        email, phone, birthday,
-        city, postcode, services) {
+    constructor(id, title, name, 
+        gender, email, phone, 
+        birthday, city, postcode, 
+        services, infant_id) {
         this.id = id;
         this.title = title;
         this.name = name;
@@ -117,6 +174,7 @@ class Passenger {
         this.postcode = postcode;
         this.birthday = birthday;
         this.services = services;
+        this.infant_id = infant_id;
     }
 
     sanitize_input() {
@@ -154,6 +212,28 @@ class Passenger {
 }
 
 // AUX
+
+function get_index(type) {
+    let index = 0;
+    while (index != passenger_types.length) {
+        if (passenger_types[index] === type) {
+            return index;
+        }
+        index++;
+    }
+    console.log('\t- Passenger type, '+type+' not found');
+}
+
+function get_age(input_date) {
+    let curr_date = new Date();
+    input_date = new Date(input_date);
+    let age = curr_date.getFullYear() - input_date.getFullYear();
+    let months = curr_date.getMonth() - input_date.getMonth();
+    if (months < 0 || (months == 0 && curr_date.getDate() < input_date.getDate())) {
+        age--;
+    }
+    return age;
+}
 
 function clear_form() {
     document.getElementById('entry-title').value = "";
