@@ -8,7 +8,7 @@
  *          and the offer id are sent as query (or body),
  *          so that PHP can process the payment request to Duffel.
  * 
- *      --> Add services support
+ *      --> GET OFFER ID (SEND IT VIA PhP->html->js)
  */
 
 let passenger_list = [];
@@ -78,6 +78,11 @@ function check_age() {
 // TODO!
 function send_payment() {
     let max_psgs = document.getElementById("pass_count").innerHTML[2];
+    let total_amount = document.getElementById("offer_payment");
+    if (total_amount != null) {
+        total_amount = get_total_amount(total_amount.innerHTML);
+    }
+    console.log('\t- Total amount: '+total_amount);
     if (passenger_list.length == max_psgs) {
         window.location.href = "https://pynkiwi.wpcomstaging.com/?page_id=2475";
     } else {
@@ -85,11 +90,32 @@ function send_payment() {
     }
 }
 
+/**
+ * Sets new total_amount value, based on selected
+ * passenger services.
+ * @param {String} total_amount 
+ */
+function get_total_amount(total_amount) {
+    let index = 0;
+    let currency = passenger_list[0].get_services_currency();
+    total_amount = parseInt(total_amount);
+    while (index < passenger_list.length) {
+        if (passenger_types[index] === "adult") {
+            let passenger = passenger_list[index];
+            total_amount += passenger.get_services_price();
+        }
+        index++;
+    }
+    return total_amount + ' ' + currency;
+}
+
 function refresh() {
     console.log('\t- Deleting passenger list');
-    while (passenger_list.length) {
-        passenger_list.pop();
-    }
+    init_flag = 1;
+    passenger_list.splice(0, passenger_list.length);
+    passenger_ids.splice(0, passenger_ids.length);
+    passenger_types.splice(0, passenger_types.length);
+    infants_not_allocated.splice(0, infants_not_allocated.length);
     clear_form();
     document.getElementById('error-log').innerHTML = "";
     document.getElementById("pass_count").innerHTML = "0/" + document.getElementById("pass_count").innerHTML[2] + " Passengers";
@@ -105,7 +131,7 @@ function add_passenger() {
     let birthday = document.getElementById('entry-bday').value;
     let age = get_age(birthday);
     let id = "";
-    let services = "";
+    let services = [];
     let infant_id = "";
     let index = -1;
 
@@ -126,12 +152,21 @@ function add_passenger() {
                 console.log('\t- Infant allocated to adult');
             }
         }
-        if (document.getElementById('entry-add-bags') != null) {
-            // TODO: services should also include the service id.
-            services = document.getElementById('entry-add-bags').value;
-            ids = document.getElementById('seg_ids').innerHTML;
-            console.log('services: '+services);
-            console.log('ids: '+ids);
+
+        if (document.getElementById('seg_ids') != null) {
+            index = 0;
+            service_ids = document.getElementById('seg_ids').innerHTML;
+            arr_service_ids = service_ids.split(';');
+            
+            while (index < arr_service_ids.length) {
+                id = arr_service_ids[index];
+                if (document.getElementById('price-'+id) != null && document.getElementById('quan-'+id) != null) {
+                    quan = document.getElementById('quan-' + id).value;
+                    price = document.getElementById('price-'+id).innerHTML;
+                    services.push(new Service(id, quan, price));
+                }
+                index++;
+            }
         }
     }
     
@@ -161,7 +196,36 @@ function add_passenger() {
         document.getElementById("pass_count").innerHTML = passenger_list.length + "/" + max_psgs + " Passengers";
         clear_form();
         console.log('Added new passenger - Current list count: ' + passenger_list.length); 
-    } 
+    } else {
+        services.pop();
+    }
+}
+
+class Service {
+    constructor(id, quantity, price) {
+        this.id = id;
+        this.quantity = quantity;
+        this.price = price; 
+        this.debug_input();
+    }
+
+    get_id() {
+        return this.id;
+    }
+
+    get_price() {   // price: 12.35 EUR
+        return parseInt(this.price.split(' ')[0]) * parseInt(this.quantity);
+    }
+
+    get_currency() {
+        return this.price.split(' ')[1];
+    }
+
+    debug_input() {
+        console.log('*** Service input debug log ***');
+        console.log('id: '+this.id+' ; price: '+this.price);
+        console.log(' *** ');
+    }
 }
 
 class Passenger {
@@ -198,6 +262,21 @@ class Passenger {
             return false;
         }
         return true;
+    }
+
+    get_services_price() {
+        let index = 0;
+        let sum = 0;
+        while (index < this.services.length) {
+            let service = this.services[index];
+            sum += service.get_price();
+            index++;
+        }
+        return sum;
+    }
+
+    get_services_currency() {
+        return this.services[0].get_currency();
     }
 
     debug_input(text_input_re, email_input_re, phone_input_re, postcode_input_re) {
@@ -248,7 +327,14 @@ function clear_form() {
     document.getElementById('entry-postcode').value = "";
     document.getElementById('entry-city').value = "";
     document.getElementById('entry-phone').value = "";
-    let services = ""; // TODO
+    let infant_input = document.getElementById("infant-input");
+    if (infant_input != null) {
+        infant_input.unchecked;
+    }
+    // let service_ids = document.getElementById('seg_ids');
+    // if (service_ids != null) {
+    //     service_ids = service_ids.innerHTML.split(';');
+    // }
 }
 
 function debug_pass_info() {

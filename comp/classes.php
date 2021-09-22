@@ -16,6 +16,9 @@
             be double checked with passenger info returned in offers.
 */
 
+// Consts
+define("MAX_SERVICES", 4);
+
 /** ###### Single Offer ######
  *  Prerequisite: Offer id
  * 
@@ -259,7 +262,7 @@ class Offer_Payment_Info
     private $segment_ids;
     private $passenger_ids;
 
-    private $total_amount;
+    private $total_amount;  // includes taxes and currency
     private $tax_amount; // plus currency
     private $payment_requirements;
     private $passenger_identity_documents_required;
@@ -296,8 +299,13 @@ class Offer_Payment_Info
     public function print_html() {
         $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
         $script = $this->get_refund_change_scripts($init_script) . $this->get_passenger_count_script();
-        $script = $script . $this->get_additional_baggage_scripts() . '}); </script>';
+        $script = $script . $this->get_additional_baggage_scripts();
+        $script = $script . $this->get_total_amount() . '}); </script>';
         echo $script;
+    }
+
+    private function get_total_amount() {
+        return 'document.getElementById("offer_payment").innerHTML = "' . $this->total_amount . '"; ';
     }
 
     // TODO: Testing, offer with more than two sub flights.
@@ -310,7 +318,7 @@ class Offer_Payment_Info
     private function get_additional_baggage_scripts() {
         $flag_add_baggage = 0;
         $input_type = 0; // 0 -> input for all flights | 1 -> various inputs
-        $printed_seg = array();
+        $printed_service = array();
         $single_flights_init =
         'document.getElementById("add-bags_text").innerHTML = "<span style=\'color:red\'>*</span> Supported flights"; ';
         $service_ids = 
@@ -318,42 +326,40 @@ class Offer_Payment_Info
         $code = 'document.getElementById("add_baggage").innerHTML += "';
 
         foreach($this->available_services as $_ => $content) {
-            if ($content->type === "baggage") {
+            if ($content->type === "baggage" && count($printed_service) != MAX_SERVICES) {
                 $returned_pas_id = $content->passenger_ids[0];
 
                 if (in_array($returned_pas_id, $this->passenger_ids)) {
-                    $service_ids = $service_ids . $content->id . ' ';
+                    $service_ids = $service_ids . $content->id . ';';
                     $flag_add_baggage = 1;
                     $max_quantity = $content->maximum_quantity;
-                    $total_price = $content->total_amount . ' ' . $content->total_currency;
                     $returned_seg_ids = $content->segment_ids;
 
-                    // NOTE: DONT FORGET TO MULTIPLY $total_price per quantity selected, before sending request to Duffel.
                     if (count(array_diff($this->segment_ids, $returned_seg_ids)) == 0) {
                         $code = $code . '<div class=\'segments_available\'><p class=\'p-title\'>All flights</p>';
-                        $code = $code . '<select id=\'entry-add-bags\' class=\'input-text\' name=\'baggage\'>';
+                        $code = $code . '<select id=\'quan-' . $content->id . '\' class=\'input-text\' name=\'baggage\'>';
                         $i = 0;
                         while ($i <= $max_quantity) {
                             $code = $code . '<option>' . $i . '</option>';
                             $i++;
                         }
-                        $code = $code . '</select><p class=\'p-title\'>' . $total_price . '</p></div>';
-                        $printed_seg = array_merge($printed_seg, $returned_seg_ids);
+                        $code = $code . '</select><p id=\'price-' . $content->id . '\' class=\'p-title\'>' . $content->total_amount . ' ' . $content->total_currency . '</p></div>';
+                        $printed_service = array_merge($printed_service, $returned_seg_ids);
                     } else {
                         $input_type = 1;
                         $code = $single_flights_init . $code;
                         foreach($returned_seg_ids as $_ => $returned_seg_id) {
-                            if (in_array($returned_seg_id, $this->segment_ids) && !in_array($returned_seg_id, $printed_seg)) {
+                            if (in_array($returned_seg_id, $this->segment_ids) && !in_array($returned_seg_id, $printed_service)) {
                                 $flight_number = array_search($returned_seg_id, $this->segment_ids) + 1;
                                 $code = $code . '<div class=\'segments_available\'><p class=\'p-title\'>Flight Nº' . $flight_number . '</p>';
-                                $code = $code . '<select id=\'entry-add-bags\' class=\'input-text\' name=\'baggage\'>';
+                                $code = $code . '<select id=\'quan-' . $content->id . '\' class=\'input-text\' name=\'baggage\'>';
                                 $i = 0;
                                 while($i <= $max_quantity) {
                                     $code = $code . '<option>' . $i . '</option>';
                                     $i++;
                                 }
-                                $code = $code . '</select><p class=\'p-title\'>' . $total_price . '</p></div>';
-                                array_push($printed_seg, $returned_seg_id);
+                                $code = $code . '</select><p id=\'price-' . $content->id . '\' class=\'p-title\'>' . $content->total_amount . ' ' . $content->total_currency . '</p></div>';
+                                array_push($printed_service, $returned_seg_id);
                             }
                         }
                     }
@@ -362,7 +368,7 @@ class Offer_Payment_Info
         }
 
         if ($input_type) {
-            $code = $code . '"; ' . $this->set_baggage_to_flight($printed_seg);
+            $code = $code . '"; ' . $this->set_baggage_to_flight($printed_service);
         } else {
             $code = $code . '"; ';
         }
@@ -378,10 +384,10 @@ class Offer_Payment_Info
      * $this->segment_ids is the same
      * as the one specified in the current offer.
      */
-    private function set_baggage_to_flight($printed_seg) {
+    private function set_baggage_to_flight($printed_service) {
         $code = '';
-        while(count($printed_seg)) {
-            $index = array_search(array_pop($printed_seg), $this->segment_ids);
+        while(count($printed_service)) {
+            $index = array_search(array_pop($printed_service), $this->segment_ids);
             $code = $code . 'document.getElementById("flight_' . $index . '").innerHTML += "<div class=\'entry top\'><span style=\'color:red\'>*</span></div>"; ';
         }
         return $code;
@@ -509,7 +515,7 @@ class Offer
 
             if ($trips === 1) {
                 $init_script = $init_script . 'document.getElementById("sub_flights").style.display = "none"; ';
-            } else {
+            } else {    // TODO: Refactor code (Instead of printing index 0 and then using while, set index to 0).
                 // subtrip
                 $index = 1;
                 while ($index < $trips) {
