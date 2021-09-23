@@ -139,14 +139,21 @@ function check_user()
  * as well as payment info.
  */
 if (isset($_GET['up_offer_id'])) {
-    show_current_offer();
     $offer_id = $_GET['up_offer_id'];
+    show_current_offer($offer_id);
     $single_offer = new Single_Offer($offer_id);
     $single_offer->get_single_offer();
     $single_offer->print_single_offer_html();
     $single_offer->print_single_offer_opts_html();
 }
 
-function show_current_offer() { // TODO: Make current offer tab responsive
-    echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("main_dash").style.display = "block"; }); </script>';
+function show_current_offer($offer_id) { // TODO: Make current offer tab responsive
+    $offer_id_html = ' document.getElementById("main_dash").innerHTML += "<div id=\'curr_offer_id\' style=\'display:none;\'>'.$offer_id.'</div>"; ';
+    echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("main_dash").style.display = "block"; '.$offer_id_html.' }); </script>';
+}
+
+if (isset($_GET['pay_offer_id'])) {
+    alert('Check - Payment');
+    $fst_pass_id = $_GET['p_0_id'];
+    console_log('Pass id: '.$fst_pass_id);
 }

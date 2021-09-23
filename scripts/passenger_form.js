@@ -10,7 +10,6 @@
  * 
  *      --> GET OFFER ID (SEND IT VIA PhP->html->js)
  */
-
 let passenger_list = [];
 let passenger_ids = [];
 let passenger_types = [];
@@ -57,7 +56,7 @@ function check_age() {
     let input_date = document.getElementById('entry-bday').value;
     let age = get_age(input_date);
 
-    console.log('Input date: '+input_date+' ; Age: '+age);
+    console.log('\t- Input date: '+input_date+' ; Age: '+age);
     let infant_discl = document.getElementById("infant-discl");
     let services = document.getElementById('services'); 
     if (infant_discl != null && services != null) {
@@ -75,16 +74,31 @@ function check_age() {
     }
 }
 
-// TODO!
 function send_payment() {
+    let offer_id = document.getElementById("curr_offer_id").innerHTML;
     let max_psgs = document.getElementById("pass_count").innerHTML[2];
     let total_amount = document.getElementById("offer_payment");
+    let pass_list_len = passenger_list.length;
     if (total_amount != null) {
         total_amount = get_total_amount(total_amount.innerHTML);
     }
-    console.log('\t- Total amount: '+total_amount);
-    if (passenger_list.length == max_psgs) {
-        window.location.href = "https://pynkiwi.wpcomstaging.com/?page_id=2475";
+    console.log('\t- Total amount: '+total_amount+' ; Offer id: '+offer_id);
+    if (pass_list_len == max_psgs) {
+        let url = new URL("https://pynkiwi.wpcomstaging.com/?page_id=2475");
+        url.searchParams.append("pay_offer_id", offer_id);
+
+        let index = 0;
+        while (index < pass_list_len) {
+            let passenger = passenger_list[index];
+            passenger.set_passenger_info(url, index)
+            index++;
+        }
+
+        window.location.href = url;
+        // window.location.href = 
+        //     "https://pynkiwi.wpcomstaging.com/?page_id=2475" + "&payment=true";
+
+        // https://pynkiwi.wpcomstaging.com/?page_id=2475&pay_offer_id=off_0000ABeUHFGL98sK7wUHKK&p_0_id=pas_0000ABeUEc6Rln6s63bZmF&p_0_name=will+pere&p_0_gender=male&p_0_phone=111+111+111&p_0_email=will%40test.com&p_0_city=porto&p_0_postcode=111-11&p_0_birthday=1996-06-22&p_0_ase_0_id=ase_0000ABeUIFssrtvDBiaDaM&p_0_ase_0_quan=0&p_1_id=pas_0000ABeUEc6Rln6s63bZmG&p_1_name=maria+mei&p_1_gender=female&p_1_phone=111+111+111+11&p_1_email=maria%40test.com&p_1_city=porto&p_1_postcode=111-11&p_1_birthday=1990-07-10&p_1_ase_0_id=ase_0000ABeUIFssrtvDBiaDaM&p_1_ase_0_quan=1
     } else {
         alert('Missing passenger information!');
     }
@@ -154,18 +168,20 @@ function add_passenger() {
         }
 
         if (document.getElementById('seg_ids') != null) {
-            index = 0;
+            let ase_index = 0;
             service_ids = document.getElementById('seg_ids').innerHTML;
             arr_service_ids = service_ids.split(';');
             
-            while (index < arr_service_ids.length) {
-                id = arr_service_ids[index];
-                if (document.getElementById('price-'+id) != null && document.getElementById('quan-'+id) != null) {
-                    quan = document.getElementById('quan-' + id).value;
-                    price = document.getElementById('price-'+id).innerHTML;
-                    services.push(new Service(id, quan, price));
+            while (ase_index < arr_service_ids.length) {
+                let ase_id = arr_service_ids[ase_index];
+                if (document.getElementById('price-' + ase_id) != null && document.getElementById('quan-' + ase_id) != null) {
+                    quan = document.getElementById('quan-'+ase_id).value;
+                    if (parseInt(quan) != 0) {
+                        price = document.getElementById('price-' + ase_id).innerHTML;
+                        services.push(new Service(ase_id, quan, price));
+                    }
                 }
-                index++;
+                ase_index++;
             }
         }
     }
@@ -197,6 +213,8 @@ function add_passenger() {
         clear_form();
         console.log('Added new passenger - Current list count: ' + passenger_list.length); 
     } else {
+        // Beacuse the service is created beforehand,
+        // if the pass info is invalid then pop();
         services.pop();
     }
 }
@@ -213,6 +231,10 @@ class Service {
         return this.id;
     }
 
+    get_quan() {
+        return this.quantity;
+    }
+
     get_price() {   // price: 12.35 EUR
         return parseInt(this.price.split(' ')[0]) * parseInt(this.quantity);
     }
@@ -223,7 +245,7 @@ class Service {
 
     debug_input() {
         console.log('*** Service input debug log ***');
-        console.log('id: '+this.id+' ; price: '+this.price);
+        console.log('\t- id: '+this.id+' ; price: '+this.price);
         console.log(' *** ');
     }
 }
@@ -254,7 +276,7 @@ class Passenger {
         let error_log = document.getElementById('error-log');
 
         //this.debug_input(text_input_re, email_input_re, phone_input_re, postcode_input_re);
-        if (!text_input_re.test(this.title+' '+this.first_name+' '+this.last_name) || !phone_input_re.test(this.phone) || !email_input_re.test(this.email) || !text_input_re.test(this.city) || !postcode_input_re.test(this.postcode)) {
+        if (!text_input_re.test(this.title+' '+this.name) || !phone_input_re.test(this.phone) || !email_input_re.test(this.email) || !text_input_re.test(this.city) || !postcode_input_re.test(this.postcode)) {
             let elem = document.createElement('p');
             elem.innerHTML = "Input data not valid!";
             elem.classList.add('lower');
@@ -262,6 +284,35 @@ class Passenger {
             return false;
         }
         return true;
+    }
+
+    // Sets passenger info via url query format
+    // key format -> p_index_(id/name/email/etc)
+    set_passenger_info(url, index) {
+        let key_format = "p_"+index+"_";
+
+        url.searchParams.append(key_format + 'id', this.id);
+        url.searchParams.append(key_format + 'name', this.name);
+        url.searchParams.append(key_format + 'gender', this.gender);
+        url.searchParams.append(key_format + 'phone', this.phone);
+        url.searchParams.append(key_format + 'email', this.email);
+        url.searchParams.append(key_format + 'city', this.city);
+        url.searchParams.append(key_format + 'postcode', this.postcode);
+        url.searchParams.append(key_format + 'birthday', this.birthday);
+
+        if (this.services.length != 0) {
+            let ase_index = 0;
+            while (ase_index < this.services.length) {
+                let service = this.services[ase_index];
+                url.searchParams.append(key_format + 'ase_'+ase_index+'_id', service.get_id());
+                url.searchParams.append(key_format + 'ase_'+ase_index+'_quan', service.get_quan());
+                ase_index++;
+            }
+        }
+        
+        if (this.infant_id != "") {
+            url.searchParams.append(key_format + 'infant_id', this.infant_id);   
+        }
     }
 
     get_services_price() {
@@ -282,15 +333,15 @@ class Passenger {
     debug_input(text_input_re, email_input_re, phone_input_re, postcode_input_re) {
         // Debug
         console.log('*** Input debug log ***');
-        console.log('Name: ' + this.title + ' ' + this.name + ' ; ' + this.gender);
-        console.log('Info: ' + this.phone + ' ; ' + this.email);
-        console.log('Geo: ' + this.city + ' ; ' + this.postcode);
+        console.log('\t- Name: ' + this.title + ' ' + this.name + ' ; ' + this.gender);
+        console.log('\t- Info: ' + this.phone + ' ; ' + this.email);
+        console.log('\t- Geo: ' + this.city + ' ; ' + this.postcode);
 
-        console.log('Name test: ' + text_input_re.test(this.title + ' ' + this.name));
-        console.log('Phone test: ' + phone_input_re.test(this.phone));
-        console.log('Email test: ' + email_input_re.test(this.email));
-        console.log('City test: ' + text_input_re.test(this.city));
-        console.log('Postcode test: ' + postcode_input_re.test(this.postcode));
+        console.log('\t- Name test: ' + text_input_re.test(this.title + ' ' + this.name));
+        console.log('\t- Phone test: ' + phone_input_re.test(this.phone));
+        console.log('\t- Email test: ' + email_input_re.test(this.email));
+        console.log('\t- City test: ' + text_input_re.test(this.city));
+        console.log('\t- Postcode test: ' + postcode_input_re.test(this.postcode));
         console.log(' *** ');
     }
 }
@@ -319,6 +370,7 @@ function get_age(input_date) {
     return age;
 }
 
+// TODO: Clear services and uncheck infant_input (not unchecking)
 function clear_form() {
     document.getElementById('entry-title').value = "";
     document.getElementById('entry-name').value = "";
@@ -347,5 +399,5 @@ function debug_pass_info() {
         types += passenger_types[index] + ' ';
         index++;
     }
-    console.log('IDS: ' + ids + ' ; TYPES: ' + types);
+    console.log('\t- IDS: ' + ids + ' ; TYPES: ' + types);
 }
