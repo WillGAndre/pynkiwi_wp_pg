@@ -16,9 +16,6 @@
             be double checked with passenger info returned in offers.
 */
 
-// Consts
-define("MAX_SERVICES", 4);
-
 /** ###### Single Offer ######
  *  Prerequisite: Offer id
  * 
@@ -59,16 +56,20 @@ define("MAX_SERVICES", 4);
 
         $res = curl_exec($ch);
         if ($err = curl_error($ch)) {
-            console_log('Error getting single offer - ' + $err);
+            console_log('[*] Error getting single offer - ' + $err);
         } else {
-            console_log('Got single offer successfully');
+            console_log('[*] Updated Offer');
             $response = gzdecode($res);
             $resp_decoded = json_decode($response);
 
-            $data = $resp_decoded->data;
-            // var_dump($data);
-
-            $this->walk_data($data);
+            // TODO!
+            if ($resp_decoded->meta->status === 422 && $resp_decoded->errors[0]->title === "Requested offer is no longer available") {
+                alert('Please reload your page');
+                exit();
+            } else {
+                $data = $resp_decoded->data;
+                $this->walk_data($data);
+            }
         }
     }
 
@@ -91,7 +92,6 @@ define("MAX_SERVICES", 4);
         $base_amount = $data->base_amount . ' ' . $data->base_currency;
         $available_services = $data->available_services;
         $allowed_pass_id_doc_types = $data->allowed_passenger_identity_document_types;
-
 
         $this->offer = $this->create_offer($data->id, $data->slices, $data->created_at, $data->expires_at);
         $this->offer_payment_info = new Offer_Payment_Info(
@@ -268,8 +268,10 @@ class Offer_Payment_Info
     private $passenger_identity_documents_required;
     private $conditions;
     private $base_amount; // plus currency
+    private $allowed_passenger_identity_document_types; // currently only supported passport (by Duffel)
+
+    public const MAX_SERVICES = 4;
     private $available_services;
-    private $allowed_passenger_identity_document_types;
 
     public function __construct(
     $segment_ids, $passenger_ids, $total_amount, $tax_amount, $payment_req, 
@@ -290,7 +292,6 @@ class Offer_Payment_Info
     /**
      * Function to print html (echo from php) in /account
      * TODO:
-     *     *-> Add support for additional bags (check segments returned from duffel and assign those segments).
      *     *-> Add support for seat selection.
      *     *-> Add offer payment support (also in wordpress).
      *          \
@@ -299,9 +300,22 @@ class Offer_Payment_Info
     public function print_html() {
         $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
         $script = $this->get_refund_change_scripts($init_script) . $this->get_passenger_count_script();
+        $script = $script . $this->check_doc_required();
         $script = $script . $this->get_additional_baggage_scripts();
         $script = $script . $this->get_total_amount() . '}); </script>';
         echo $script;
+    }
+
+    /**
+     * Check if document info is required
+     * in order to book flights.
+     */
+    private function check_doc_required() {
+        $code = '';
+        if ($this->passenger_identity_documents_required == false) {
+            $code = $code . 'document.getElementById("passport-info").style.display = "none"; ';
+        }
+        return $code;
     }
 
     private function get_total_amount() {
@@ -326,7 +340,7 @@ class Offer_Payment_Info
         $code = 'document.getElementById("add_baggage").innerHTML += "';
 
         foreach($this->available_services as $_ => $content) {
-            if ($content->type === "baggage" && count($printed_service) != MAX_SERVICES) {
+            if ($content->type === "baggage" && count($printed_service) != $this->MAX_SERVICES) {
                 $returned_pas_id = $content->passenger_ids[0];
 
                 if (in_array($returned_pas_id, $this->passenger_ids)) {
@@ -373,7 +387,7 @@ class Offer_Payment_Info
             $code = $code . '"; ';
         }
         $code = $service_ids . '"; ' . $code;
-        console_log('Services -> Additional Bags: ' . $flag_add_baggage);
+        console_log('\t- Services -> Additional Bags: ' . $flag_add_baggage);
         return $code;
     }
 
@@ -403,7 +417,7 @@ class Offer_Payment_Info
 
         $flag_ref = 0;
         if ($refund_before_departure->allowed) {$flag_ref = 1;}
-        console_log('Refunds: ' . $flag_ref);
+        console_log('\t- Refunds: ' . $flag_ref);
         if ($refund_before_departure !== NULL && $refund_before_departure->allowed) {
             $refund_penalty_amount = $refund_before_departure->penalty_amount . ' ' . $refund_before_departure->penalty_currency;
             $script = $script . 'document.getElementById("entry-ref_price").innerHTML += "' . $refund_penalty_amount . '";';
@@ -413,7 +427,7 @@ class Offer_Payment_Info
 
         $flag_chg = 0;
         if ($change_before_departure->allowed) {$flag_chg = 1;}
-        console_log('Changes: ' . $flag_chg);
+        console_log('\t- Changes: ' . $flag_chg);
         if ($change_before_departure !== NULL && $change_before_departure->allowed) {
             $change_penalty_amount = $change_before_departure->penalty_amount . ' ' . $change_before_departure->penalty_currency;
             $script = $script . 'document.getElementById("entry-chg_price").innerHTML += "' . $change_penalty_amount . '";';
@@ -509,7 +523,7 @@ class Offer
         }
 
         if ($single_offer):
-            console_log('Printing Single Offer');
+            console_log('[*] Printing Single Offer | Offer ttl: ' . $this->ttl);
 
             $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
 
@@ -518,14 +532,17 @@ class Offer
             } else {    // TODO: Refactor code (Instead of printing index 0 and then using while, set index to 0).
                 // subtrip
                 $index = 1;
+                $sub_flights_code = 'document.getElementById("sub_flights").onclick = function(event) { ';
                 while ($index < $trips) {
                     $depart_date_string = substr($this->departing_at[$index], 0, 10) . "  " . substr($this->departing_at[$index], 11, 5);
                     $arrive_date_string = substr($this->arriving_at[$index], 0, 10) . "  " . substr($this->arriving_at[$index], 11, 5);
                     $flight_duration = $this->get_flight_duration($depart_date_string, $arrive_date_string);
-                    $init_script = $init_script . 'document.getElementById("flight_info").innerHTML += "<div id=\'flight_' . $index . '\' class=\'flight_info_content\'><div class=\'entry top\'><div class=\'title\'>Source:</div><div id=\'entry-source\' class=\'text imp\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Destination:</div><div id=\'entry-dest\' class=\'text imp\'>' . $this->destination_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Dep Date:</div><div id=\'entry-dep_date\' class=\'text imp\'>' . $depart_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Arr Date:</div><div id=\'entry-arr_date\' class=\'text imp\'>' . $arrive_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Flight time:</div><div id=\'entry-flight_time\' class=\'text imp\'>' . $flight_duration . '</div></div></div>"; document.getElementById("flight_' . $index . '").style.display = "none";';
-                    $init_script = $init_script . 'document.getElementById("sub_flights").onclick = function(event) { document.getElementById("flight_' . $index . '").style.display = "flex"; document.getElementById("sub_flights").style.display = "none"; };';
+                    $init_script = $init_script . 'document.getElementById("flight_info").innerHTML += "<div id=\'flight_' . $index . '\' class=\'flight_info_content\'><div class=\'entry top\'><div class=\'title\'>Source:</div><div id=\'entry-source\' class=\'text imp\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Destination:</div><div id=\'entry-dest\' class=\'text imp\'>' . $this->destination_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Dep Date:</div><div id=\'entry-dep_date\' class=\'text imp\'>' . $depart_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Arr Date:</div><div id=\'entry-arr_date\' class=\'text imp\'>' . $arrive_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Flight time:</div><div id=\'entry-flight_time\' class=\'text imp\'>' . $flight_duration . '</div></div></div>"; document.getElementById("flight_' . $index . '").style.display = "none"; ';
+                    $sub_flights_code = $sub_flights_code . 'document.getElementById("flight_' . $index . '").style.display = "flex"; ';
                     $index++;
                 }
+                $sub_flights_code = $sub_flights_code . 'document.getElementById("sub_flights").style.display = "none"; }; ';
+                $init_script = $init_script . $sub_flights_code;
             }
 
             $depart_date_string = substr($this->departing_at[0], 0, 10) . "  " . substr($this->departing_at[0], 11, 5);
@@ -539,7 +556,7 @@ class Offer
                 $departing_time = substr($this->departing_at[0], 11, 5);
                 $flight_duration = $this->get_flight_duration($this->departing_at[0], $this->arriving_at[0]);
 
-                console_log('Printing flight from: ' . $this->source_iata_code[0] . '  to  ' . $this->destination_iata_code[0]);
+                console_log('[*] Printing flight from: ' . $this->source_iata_code[0] . '  to  ' . $this->destination_iata_code[0] . ' | Offer ttl: ' . $this->ttl);
 
                 echo
                 '<link rel="stylesheet" href="./style_results.css">
@@ -557,7 +574,7 @@ class Offer
                 $middle_flights = $this->get_intermediate_flights($flight_tag);
                 $middle_flights_scripts = $this->get_intermediate_flights_scripts($flight_tag);
 
-                console_log('Printing flight from: ' . IATA_FROM . '  to  ' . IATA_TO . ' + subflights ');
+                console_log('[*] Printing flight from: ' . IATA_FROM . '  to  ' . IATA_TO . ' + subflights | Offer ttl: ' . $this->ttl);
 
                 echo
                 '<link rel="stylesheet" href="./style_results.css">
@@ -811,11 +828,11 @@ class Offer_request
 
         $res = curl_exec($ch);
         if ($err = curl_error($ch)) {
-            console_log('Error getting Duffel offer request - ' . $err);
+            console_log('[*] Error getting Duffel offer request - ' . $err);
             curl_close($ch);
             error_msg();
         } else {
-            console_log('Offer request successfully created');
+            console_log('[*] Offer request successfully created');
             $response = gzdecode($res);
             $resp_decoded = json_decode($response);
             foreach ($resp_decoded as $_ => $data) {
@@ -864,7 +881,7 @@ class Offer_request
         $offers = $data->offers;
         $this->offer_request_id = $data->id;
 
-        console_log('Offers received: ' . count($offers));
+        console_log('\t- Offers received: ' . count($offers));
         foreach($offers as $_ => $v1) {
             // ### Offer Data ###
             $offer_id = "";
@@ -958,12 +975,10 @@ class Offer_request
             );
             array_push($this->offers, $offer);
             if ($count === self::MAX_OFFERS) {
-                console_log('Reached max offers');
+                console_log('\t- Reached max offers');
                 break;
             }
         }
-
-
 
         return $this->offers;
     }
@@ -1000,6 +1015,7 @@ class Offer_request
             $airline
         );
     }
+
 }
 
 // ###### Duffel Offer request arguments ######

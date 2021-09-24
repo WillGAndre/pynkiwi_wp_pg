@@ -67,7 +67,7 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     // $iata_code_to = get_iata_code($geo_arr_to[0], $geo_arr_to[1]);
 
     $iata_code_from = 'OPO';
-    $iata_code_to = 'MAD'; // YYZ
+    $iata_code_to = 'YYZ'; // MAD
 
     // Define constants
     define("IATA_FROM", $iata_code_from);
@@ -134,9 +134,9 @@ function check_user()
 
 // Trigger -> onclick of offer price button (redirect to account)
 /**
- * Upon receiving a redirect with a offer_id as 
+ * Upon receiving a redirect with a up_offer_id as 
  * a query argument, print offer options information 
- * as well as payment info.
+ * as well as payment info (single offer request).
  */
 if (isset($_GET['up_offer_id'])) {
     $offer_id = $_GET['up_offer_id'];
@@ -152,8 +152,9 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
     echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("main_dash").style.display = "block"; '.$offer_id_html.' }); </script>';
 }
 
+// TODO 
 if (isset($_GET['pay_offer_id'])) {
     alert('Check - Payment');
     $fst_pass_id = $_GET['p_0_id'];
-    console_log('Pass id: '.$fst_pass_id);
+    console_log('Fst Pass id: '.$fst_pass_id);
 }

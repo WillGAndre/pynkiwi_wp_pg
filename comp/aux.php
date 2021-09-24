@@ -9,7 +9,7 @@ function get_offer_ttl($offer_created_at, $offer_expires_at)
         $created_at_date = new DateTime($created_at_date_string);
         $expires_at_date = new DateTime($expires_at_date_string);
 
-        return $created_at_date->diff($expires_at_date);
+        return $created_at_date->diff($expires_at_date)->format("%H:%I:%S") . "";
 }
 
 /*

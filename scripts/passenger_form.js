@@ -3,12 +3,8 @@
  * add new passengers and clear the current list.
  * 
  * TODO:
- *      --> On payment click, redirect to url page 
- *          in which passenger, services, total amount 
- *          and the offer id are sent as query (or body),
- *          so that PHP can process the payment request to Duffel.
+ *      --> add support for passenger_identity_documents_required
  * 
- *      --> GET OFFER ID (SEND IT VIA PhP->html->js)
  */
 let passenger_list = [];
 let passenger_ids = [];
@@ -46,6 +42,8 @@ function get_passenger_ids() {
     }
 }
 
+// TODO: change age restrictions,
+//       if adult show, if not remove
 /**
  * Function triggered onchange of input[type="date"],
  * if current passenger age <= 1 (infant), remove
@@ -95,9 +93,6 @@ function send_payment() {
         }
 
         window.location.href = url;
-        // window.location.href = 
-        //     "https://pynkiwi.wpcomstaging.com/?page_id=2475" + "&payment=true";
-
         // https://pynkiwi.wpcomstaging.com/?page_id=2475&pay_offer_id=off_0000ABeUHFGL98sK7wUHKK&p_0_id=pas_0000ABeUEc6Rln6s63bZmF&p_0_name=will+pere&p_0_gender=male&p_0_phone=111+111+111&p_0_email=will%40test.com&p_0_city=porto&p_0_postcode=111-11&p_0_birthday=1996-06-22&p_0_ase_0_id=ase_0000ABeUIFssrtvDBiaDaM&p_0_ase_0_quan=0&p_1_id=pas_0000ABeUEc6Rln6s63bZmG&p_1_name=maria+mei&p_1_gender=female&p_1_phone=111+111+111+11&p_1_email=maria%40test.com&p_1_city=porto&p_1_postcode=111-11&p_1_birthday=1990-07-10&p_1_ase_0_id=ase_0000ABeUIFssrtvDBiaDaM&p_1_ase_0_quan=1
     } else {
         alert('Missing passenger information!');
@@ -196,15 +191,23 @@ function add_passenger() {
     let first_last_name = document.getElementById('entry-name').value;
     let gender = document.getElementById('entry-gender').value;
     let email = document.getElementById('entry-mail').value;
-    let postcode = document.getElementById('entry-postcode').value;
-    let city = document.getElementById('entry-city').value;
+    let country = document.getElementById('entry-country').value;
     let phone = document.getElementById('entry-phone').value;
+    let passport_id = "";
+    let passport_exp_date = "";
+    // passport emission country should be the same as the country above
+
+    if (document.getElementById("passport-info").style.display != "none") {
+        passport_id = document.getElementById("entry-doc_id").value;
+        passport_exp_date = document.getElementById("entry-doc_exp_date").value;
+    }
 
     let psg = new Passenger(
         id, title, first_last_name, 
         gender, email, phone, 
-        birthday, city, postcode, 
-        services, infant_id
+        birthday, country, 
+        services, infant_id,
+        passport_id, passport_exp_date
     );
     let max_psgs = document.getElementById("pass_count").innerHTML[2];
     if (psg.sanitize_input() && passenger_list.length < max_psgs) {
@@ -253,30 +256,32 @@ class Service {
 class Passenger {
     constructor(id, title, name, 
         gender, email, phone, 
-        birthday, city, postcode, 
-        services, infant_id) {
+        birthday, country, 
+        services, infant_id,
+        doc_id, doc_exp_date) {
         this.id = id;
         this.title = title;
         this.name = name;
         this.gender = gender;
         this.phone = phone;
         this.email = email;
-        this.city = city;
-        this.postcode = postcode;
+        this.country = country;
         this.birthday = birthday;
         this.services = services;
         this.infant_id = infant_id;
+        this.doc_id = doc_id;
+        this.doc_exp_date = doc_exp_date;
     }
 
     sanitize_input() {
+        let passport_id_re = /^[A-Za-z0-9]+$/;
         let text_input_re = /^[A-Za-z' ']+$/;
         let email_input_re = /^[A-Za-z0-9'.']+@[A-Za-z0-9'.']+$/;
         let phone_input_re = /^(\+?)[0-9' ']+$/;
-        let postcode_input_re = /^([0-9]+)-([0-9]+)$/;
         let error_log = document.getElementById('error-log');
 
         //this.debug_input(text_input_re, email_input_re, phone_input_re, postcode_input_re);
-        if (!text_input_re.test(this.title+' '+this.name) || !phone_input_re.test(this.phone) || !email_input_re.test(this.email) || !text_input_re.test(this.city) || !postcode_input_re.test(this.postcode)) {
+        if (!text_input_re.test(this.title + ' ' + this.name) || !phone_input_re.test(this.phone) || !email_input_re.test(this.email) || !text_input_re.test(this.country) || (this.doc_id != "" && !passport_id_re.test(this.doc_id))) {
             let elem = document.createElement('p');
             elem.innerHTML = "Input data not valid!";
             elem.classList.add('lower');
@@ -296,9 +301,13 @@ class Passenger {
         url.searchParams.append(key_format + 'gender', this.gender);
         url.searchParams.append(key_format + 'phone', this.phone);
         url.searchParams.append(key_format + 'email', this.email);
-        url.searchParams.append(key_format + 'city', this.city);
-        url.searchParams.append(key_format + 'postcode', this.postcode);
+        url.searchParams.append(key_format + 'country', this.country);
         url.searchParams.append(key_format + 'birthday', this.birthday);
+
+        if (this.doc_id != "") {
+            url.searchParams.append(key_format + 'doc_id', this.doc_id);
+            url.searchParams.append(key_format + 'doc_exp_date', this.doc_exp_date);
+        }
 
         if (this.services.length != 0) {
             let ase_index = 0;
@@ -330,18 +339,17 @@ class Passenger {
         return this.services[0].get_currency();
     }
 
-    debug_input(text_input_re, email_input_re, phone_input_re, postcode_input_re) {
+    debug_input(text_input_re, email_input_re, phone_input_re) {
         // Debug
         console.log('*** Input debug log ***');
         console.log('\t- Name: ' + this.title + ' ' + this.name + ' ; ' + this.gender);
         console.log('\t- Info: ' + this.phone + ' ; ' + this.email);
-        console.log('\t- Geo: ' + this.city + ' ; ' + this.postcode);
+        console.log('\t- Geo: ' + this.country);
 
         console.log('\t- Name test: ' + text_input_re.test(this.title + ' ' + this.name));
         console.log('\t- Phone test: ' + phone_input_re.test(this.phone));
         console.log('\t- Email test: ' + email_input_re.test(this.email));
-        console.log('\t- City test: ' + text_input_re.test(this.city));
-        console.log('\t- Postcode test: ' + postcode_input_re.test(this.postcode));
+        console.log('\t- Country test: ' + text_input_re.test(this.country));
         console.log(' *** ');
     }
 }
@@ -376,17 +384,30 @@ function clear_form() {
     document.getElementById('entry-name').value = "";
     document.getElementById('entry-mail').value = "";
     document.getElementById('entry-bday').value = "";
-    document.getElementById('entry-postcode').value = "";
-    document.getElementById('entry-city').value = "";
+    document.getElementById('entry-country').value = "";
     document.getElementById('entry-phone').value = "";
     let infant_input = document.getElementById("infant-input");
     if (infant_input != null) {
-        infant_input.unchecked;
+        if (infants_not_allocated.length == 0) {
+            infant_input.style.display = "none";
+            console.log('\t- All infant passengers allocated');
+        } else {
+            infant_input.checked = false;
+        }
     }
-    // let service_ids = document.getElementById('seg_ids');
-    // if (service_ids != null) {
-    //     service_ids = service_ids.innerHTML.split(';');
-    // }
+    if (document.getElementById('seg_ids') != null) {
+        let ase_index = 0;
+        service_ids = document.getElementById('seg_ids').innerHTML;
+        arr_service_ids = service_ids.split(';');
+
+        while (ase_index < arr_service_ids.length) { 
+            let input = document.getElementById("quan-" + arr_service_ids[ase_index]);
+            if (input != null) {
+                input.value = 0;
+            }
+            ase_index++;
+        }
+    }
 }
 
 function debug_pass_info() {
