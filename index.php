@@ -1,5 +1,5 @@
 <?php
-
+// Copyright 2021 - PYNKIWI
 /**
  * Plugin Name: Pynkiwi flights plugin
  * Plugin URI: -
@@ -16,7 +16,11 @@
  */
 function add_scripts()
 {
-    wp_enqueue_style('plugin-stylesheet', plugins_url('style_results.css', __FILE__));
+    // wp_enqueue_style('plugin-stylesheet', plugins_url('style_results.css', __FILE__));
+    wp_enqueue_style('plugin-flight-search-stylesheet', plugin_dir_url(__FILE__) . 'style/flight_search.css');
+    wp_enqueue_style('plugin-flight-search-results-stylesheet', plugin_dir_url(__FILE__) . 'style/flight_search_results.css');
+    wp_enqueue_script('plugin-flight-search-calender-scripts', plugin_dir_url(__FILE__) . 'scripts/flight_search_calender.js');
+    wp_enqueue_script('plugin-passenger-form-scripts', plugin_dir_url(__FILE__) . 'scripts/passenger_form.js');
 }
 add_action('wp_enqueue_scripts', 'add_scripts');
 
@@ -25,8 +29,9 @@ include_once(plugin_dir_path(__FILE__) . 'comp/aux.php');
 // Classes - Slices, Passengers, Offer Request, Offers
 include_once(plugin_dir_path(__FILE__) . 'comp/classes.php');
 
+$hashmap_offers = array();  // Global offers hasmap (index -> offer id, value -> offer)
 
-if (isset($_POST['hidden_submit'])) {
+if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     $first_date = $_POST['input-date-first'];
     $second_date = $_POST['input-date-second'];
 
@@ -62,7 +67,7 @@ if (isset($_POST['hidden_submit'])) {
     // $iata_code_to = get_iata_code($geo_arr_to[0], $geo_arr_to[1]);
 
     $iata_code_from = 'OPO';
-    $iata_code_to = 'MAD';
+    $iata_code_to = 'YYZ'; // MAD
 
     // Define constants
     define("IATA_FROM", $iata_code_from);
@@ -90,7 +95,66 @@ if (isset($_POST['hidden_submit'])) {
     foreach ($offers as $index => $offer) {
         if ($airline_name === "None" || $offer->compare_airline($airline_name)) {
             // console_log("Input airline name: " . $airline_name);
-            $offer->print_html();
+            $offer->print_html(0);
+            $hashmap_offers[$offer->get_offer_id()] = $offer;
         }
     }
+}
+
+// Offer ID --> $_POST['offer_submit']
+/**
+ * On Offer price click proc check_user.
+ */
+if (isset($_POST['flight-price'])) {
+    add_action('init', 'check_user');
+}
+
+/**
+ * Checks if user is logged in, if so,
+ * the user is redirected to his account
+ * page with a main offer dashboard
+ * where he can further customize his offer
+ * and pay. The redirect url is sent with the
+ * offer_id saved in 'offer_submit'.
+ */
+function check_user()
+{
+    if (is_user_logged_in()) :
+        console_log('user logged in');
+        header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+            'page_id' => 2475,
+            'up_offer_id' => $_POST['offer_submit']
+        )));
+    else : // TODO: !
+        header('Location: https://pynkiwi.wpcomstaging.com/?page_id=2478');
+        console_log('user not logged in');
+    endif;
+}
+
+
+// Trigger -> onclick of offer price button (redirect to account)
+/**
+ * Upon receiving a redirect with a up_offer_id as 
+ * a query argument, print offer options information 
+ * as well as payment info (single offer request).
+ */
+if (isset($_GET['up_offer_id'])) {
+    $offer_id = $_GET['up_offer_id'];
+    show_current_offer($offer_id);
+    $single_offer = new Single_Offer($offer_id);
+    $single_offer->get_single_offer();
+    $single_offer->print_single_offer_html();
+    $single_offer->print_single_offer_opts_html();
+}
+
+function show_current_offer($offer_id) { // TODO: Make current offer tab responsive
+    $offer_id_html = ' document.getElementById("main_dash").innerHTML += "<div id=\'curr_offer_id\' style=\'display:none;\'>'.$offer_id.'</div>"; ';
+    echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("main_dash").style.display = "block"; '.$offer_id_html.' }); </script>';
+}
+
+// TODO 
+if (isset($_GET['pay_offer_id'])) {
+    alert('Check - Payment');
+    $fst_pass_id = $_GET['p_0_id'];
+    console_log('Fst Pass id: '.$fst_pass_id);
 }

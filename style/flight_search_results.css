@@ -58,16 +58,12 @@
   padding-left:12px;
 }
 #airlines {
-  word-wrap: break-word;
+  display: flex; 
+  justify-content: left; 
+  margin-right: -1.2em;
 }
 .flightDisplay {
   margin-left: -2.2em;
-}
-#priceDiv {
- margin-left: 1em;
- padding: 0.8em;
- width: 5em;
- cursor: pointer;
 }
 .timeline {
   width:150px;
@@ -125,3 +121,16 @@
   margin-right: 2.65em;
 }
 
+.flight-price {
+  background: #5b2a4d;
+  border: 0;
+  margin-left: 0.5em;
+  margin-right: -1em;
+  padding: 0.5em;
+  min-width: 8vw;
+  min-height: 3vw;
+  cursor: pointer;
+  word-wrap: break-word;
+  white-space: normal;
+  font-size: small;
+}

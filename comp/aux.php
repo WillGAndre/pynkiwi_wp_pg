@@ -1,6 +1,17 @@
 <?php
+// Copyright 2021 - PYNKIWI
 
 // ###### Auxilary ######
+function get_offer_ttl($offer_created_at, $offer_expires_at)
+{
+        $created_at_date_string = substr($offer_created_at, 0, 10) . "  " . substr($offer_created_at, 11, 5);
+        $expires_at_date_string = substr($offer_expires_at, 0, 10) . "  " . substr($offer_expires_at, 11, 5);
+        $created_at_date = new DateTime($created_at_date_string);
+        $expires_at_date = new DateTime($expires_at_date_string);
+
+        return $created_at_date->diff($expires_at_date)->format("%H:%I:%S") . "";
+}
+
 /*
     TODO:
     --> add user friendly 500 error message
