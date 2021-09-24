@@ -518,8 +518,14 @@ class Offer
     public function print_html($single_offer)
     {
         $trips = count($this->source_iata_code);
-        if ($this->flight_class == "Premium_Economy") {
+        if ($this->flight_class == "premium_economy") {
             $this->flight_class = "P.Economy";
+        } else if ($this->flight_class == "economy") {
+            $this->flight_class = "Economy";
+        } else if ($this->flight_class == "first") {
+            $this->flight_class = "First";
+        } else if ($this->flight_class == "business") {
+            $this->flight_class = "Business";
         }
 
         if ($single_offer):
