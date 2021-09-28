@@ -24,7 +24,7 @@
  *  returned data back to WP.
  *  Also creates an Offer and Offer_Payment_Info class.
  */
- class Single_Offer
+class Single_Offer
 {
     private $offer_id;
     private $offer;
@@ -45,7 +45,7 @@
             'Accept: application/json',
             'Content-Type: application/json',
             'Duffel-Version: beta',
-            'Authorization: Bearer duffel_test__CCC-2IpAyTjsoCzktXw_9Aaf3BPq8O26Tff5rzc1F0'
+            'Authorization: Bearer duffel_test_vDBYacGBACsUsAYIRATuTQXieoIsb_TxLjcM4hAmUTl'
         );
 
         $ch = curl_init();
@@ -82,7 +82,7 @@
      */
     private function walk_data($data)
     {
-        $this->allocate_passenger_ids($data->passengers);
+        $this->allocate_passenger_ids($data->passengers);   
 
         $total_amount = $data->total_amount . ' ' . $data->total_currency;
         $tax_amount = $data->tax_amount . ' ' . $data->total_currency;
@@ -122,13 +122,46 @@
         $arriving_at = array();
         $total_amount = "";
         $airline = array();
+        $baggage_per_sli = array();
         // ---    ####    ---
         foreach ($slices as $_ => $v3) {
+            // ### Baggages Data ###
+            $sli_id = "";
+            $seg_ids = array();
+            $pas_ids = array();
+            $baggages = array();
+            // ---    ####    ---
             foreach ($v3 as $k4 => $v4) {
                 if ($k4 === "segments") {
                     foreach ($v4 as $_ => $v5) {
                         foreach ($v5 as $k6 => $v6) {
-                            if ($k6 === "origin_terminal") {
+                            if ($k6 === "passengers") {
+                                foreach ($v6 as $_ => $passenger) {
+                                    // ### Baggage Data ###
+                                    $pas_id = "";
+                                    $types = array();
+                                    $quans = array();
+                                    // ---    ####    ---
+                                    foreach ($passenger as $pass_key => $pass_val) {
+                                        if ($pass_key === "passenger_id") {
+                                            $pas_id = $pass_val;
+                                            array_push($pas_ids, $pas_id);
+                                        } else if ($pass_key === "baggages") {
+                                            foreach ($pass_val as $_ => $baggage) {
+                                                foreach ($baggage as $bag_key => $bag_val) {
+                                                    if ($bag_key === "type") {
+                                                        array_push($types, $bag_val);
+                                                    } else if ($bag_key === "quantity") {
+                                                        array_push($quans, $bag_val);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    $baggage = new Baggage($pas_id, $types, $quans);
+                                    array_push($baggages, $baggage);
+                                }
+                            } else if ($k6 === "origin_terminal") {
                                 array_push($source_terminal, $v6);
                             } else if ($k6 === "origin") {
                                 foreach ($v6 as $k7 => $v7) {
@@ -150,7 +183,7 @@
                                 }
                             } else if ($k6 === "departing_at") {
                                 array_push($departing_at, $v6);
-                            } else if ($k6 === "arriving_at") { // Last entry scanned 
+                            } else if ($k6 === "arriving_at") { 
                                 array_push($arriving_at, $v6);
                             } else if ($k6 === "operating_carrier") {
                                 foreach ($v6 as $k7 => $v7) {
@@ -158,11 +191,17 @@
                                         array_push($airline, $v7);
                                     }
                                 }
+                            } else if ($k6 === "id") {
+                                array_push($seg_ids, $v6);
                             }
                         }
                     }
+                } else if ($k4 === "id") {
+                    $sli_id = $v4;
                 }
             }
+            $offer_baggage = new Baggages($sli_id, $seg_ids, $pas_ids, $baggages);
+            array_push($baggage_per_sli, $offer_baggage);
         }
 
         return new Offer(
@@ -178,7 +217,8 @@
             $arriving_at,
             $this->cabin_class,
             $total_amount,
-            $airline
+            $airline,
+            $baggage_per_sli
         );
     }
 
@@ -240,7 +280,7 @@
     }
 
     public function print_single_offer_html() {
-        return $this->offer->print_html(1);
+        return $this->offer->print_html(1,0);
     }
 
     public function print_single_offer_opts_html() {
@@ -447,6 +487,14 @@ class Offer_Payment_Info
     }
 }
 
+/*
+    TODO:
+    if offer has carry on bag, then specify
+    so in offer (inluding single offers also).
+    Get carry on bag symbol from Duffel,
+    text just before the offer payment button
+    and and in the current offer options. 
+*/
 /** ###### Offer ######
  * Offer class used to show
  * offers received from Offer_request
@@ -479,6 +527,8 @@ class Offer
     private $flight_price;
     private $airline;
 
+    private $baggage_per_sli; // slice -> set of segments
+
     public function __construct(
         $offer_id,
         $ttl,
@@ -492,7 +542,8 @@ class Offer
         $arriving_at,
         $flight_class,
         $flight_price,
-        $airline
+        $airline,
+        $baggage
     ) {
         $this->offer_id = $offer_id;
         $this->ttl = $ttl;
@@ -507,6 +558,7 @@ class Offer
         $this->flight_class = $flight_class;
         $this->flight_price = $flight_price;
         $this->airline = $airline;
+        $this->baggage_per_sli = $baggage;
     }
 
     public function get_offer_id() 
@@ -514,8 +566,21 @@ class Offer
         return $this->offer_id;
     }
 
-    // 0 -> normal offer | 1 -> single offer
-    public function print_html($single_offer)
+    /**
+     * Prints relevant html code that represents
+     * the offer in different areas of the WP
+     * website.
+     * Args:
+     *  $single_offer (boolean): 
+     *      0 --> normal offer (Offers in /flight-booking)
+     *      1 --> single offer (Offers in /account, after pay div) 
+     *  
+     *  $hide_offer (boolean):
+     *      NOTE: This arg is only triggered if $single_offer = 0.
+     *      0 --> print offer 
+     *      1 --> print offer but hide the contents (display: none).
+     */
+    public function print_html($single_offer, $hide_offer)
     {
         $trips = count($this->source_iata_code);
         if ($this->flight_class == "premium_economy") {
@@ -557,19 +622,25 @@ class Offer
 
             echo $init_script . 'document.getElementById("entry-source").innerHTML += "' . $this->source_iata_code[0] . '"; document.getElementById("entry-dest").innerHTML += "' . $this->destination_iata_code[0] . '"; document.getElementById("entry-dep_date").innerHTML += "' . $depart_date_string . '"; document.getElementById("entry-arr_date").innerHTML += "' . $arrive_date_string . '"; document.getElementById("entry-flight_time").innerHTML += "' . $flight_duration . '"; }); </script>';
         else:
+            $opt = '';
+            if ($hide_offer) {
+                $opt = " style=\'display:none;\' ";
+                console_log('[*] Offer from: ' . IATA_FROM . '  to  ' . IATA_TO . ' | Offer ttl: ' . $this->ttl);
+            } else {
+                console_log('[*] Printing offer from: ' . IATA_FROM . '  to  ' . IATA_TO . ' | Offer ttl: ' . $this->ttl);
+            }
+            // TODO: check if baggage options from [0] are equal to [1].
+            $baggage_html = $this->baggage_per_sli[0]->print_baggage_html_off_req();
             if ($trips === 1) { // One-way
                 $airline = $this->get_airlines_div($this->airline);
                 $departing_time = substr($this->departing_at[0], 11, 5);
                 $flight_duration = $this->get_flight_duration($this->departing_at[0], $this->arriving_at[0]);
 
-                console_log('[*] Printing flight from: ' . $this->source_iata_code[0] . '  to  ' . $this->destination_iata_code[0] . ' | Offer ttl: ' . $this->ttl);
-
                 echo
                 '<link rel="stylesheet" href="./style_results.css">
                 <script>
                         document.addEventListener("DOMContentLoaded", function(event) {
-                            document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\'><div class=\'flightNo infoDiv\'>' . $airline . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[0] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[0] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'></div></form></div>";
-                            console.log(document.getElementById("flightResults"));
+                            document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\''.$opt.'><div class=\'flightNo infoDiv\'>' . $airline . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[0] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[0] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div id=\'payment-container\' class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'>'.$baggage_html.'</div></form></div>";
                         });
                 </script>';
             } else {    // Multiple trips and return flights (TODO: Integrate Multi trip flights).
@@ -579,8 +650,6 @@ class Offer
                 $airlines = $this->get_airlines_div(array_unique($this->airline));
                 $middle_flights = $this->get_intermediate_flights($flight_tag);
                 $middle_flights_scripts = $this->get_intermediate_flights_scripts($flight_tag);
-
-                console_log('[*] Printing flight from: ' . IATA_FROM . '  to  ' . IATA_TO . ' + subflights | Offer ttl: ' . $this->ttl);
 
                 echo
                 '<link rel="stylesheet" href="./style_results.css">
@@ -593,11 +662,13 @@ class Offer
                         ' . $middle_flights_scripts . '
 
                         document.addEventListener("DOMContentLoaded", function(event) {
-                            document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\'><div id=\'airlines\' class=\'flightNo infoDiv\'>' . $airlines . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . IATA_FROM . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'center\'><input class=\'flightsBt\' type=\'button\' name=\'answer\' value=\'Show Flights\' onclick=\'showDiv' . $div_id . '()\' /></div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . IATA_TO . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'></div></form></div><div id=\'subflight' . $div_id . '\' class=\'flightResults\' style=\'display:none; margin-left: 2.6em; width: -moz-fit-content; width: fit-content;\'>' . $middle_flights . '</div>";
-                            console.log(document.getElementById("flightResults"));
-                            console.log(document.getElementById("subflight' . $div_id . '"));
+                            document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\''.$opt.'><div id=\'airlines\' class=\'flightNo infoDiv\'>' . $airlines . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . IATA_FROM . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'center\'><input class=\'flightsBt\' type=\'button\' name=\'answer\' value=\'Show Flights\' onclick=\'showDiv' . $div_id . '()\' /></div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . IATA_TO . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div id=\'payment-container\' class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'>'.$baggage_html.'</div></form></div><div id=\'subflight' . $div_id . '\' class=\'flightResults\' style=\'display:none; margin-left: 2.6em; width: -moz-fit-content; width: fit-content;\'>' . $middle_flights . '</div>";
                         });
                 </script>';
+                /*
+                            console.log(document.getElementById("flightResults"));
+                            console.log(document.getElementById("subflight' . $div_id . '"));
+                */
             }
         endif;
     }
@@ -704,7 +775,7 @@ class Offer
             case 'Turkish Airlines':
                 return 'TK';
             default:
-                console_log('Airline Logo name not found');
+                //console_log('Airline Logo name not found');
                 return '';
         }
     }
@@ -751,6 +822,11 @@ class Offer
         }
         return $div;
     }
+
+    // DEBUG
+    public function debug_baggage() {
+        var_dump($this->baggage_per_sli);
+    }
 }
 
 /*
@@ -777,7 +853,7 @@ class Offer_request
     private $cabin_class;
     private $offer_request_id;
     private $offers;
-    private const MAX_OFFERS = 5;
+    private const MAX_OFFERS = 50;
 
     public function __construct($slices, $passengers, $cabin_class)
     {
@@ -821,7 +897,7 @@ class Offer_request
             'Accept: application/json',
             'Content-Type: application/json',
             'Duffel-Version: beta',
-            'Authorization: Bearer duffel_test__CCC-2IpAyTjsoCzktXw_9Aaf3BPq8O26Tff5rzc1F0'
+            'Authorization: Bearer duffel_test_vDBYacGBACsUsAYIRATuTQXieoIsb_TxLjcM4hAmUTl'
         );
         $data = $this->get_post_data();
 
@@ -887,7 +963,7 @@ class Offer_request
         $offers = $data->offers;
         $this->offer_request_id = $data->id;
 
-        console_log('\t- Offers received: ' . count($offers));
+        $this->print_num_offers(count($offers));
         foreach($offers as $_ => $v1) {
             // ### Offer Data ###
             $offer_id = "";
@@ -904,15 +980,48 @@ class Offer_request
             $total_amount = "";
             $total_currency = "";
             $airline = array();
+            $baggage_per_sli = array(); // per sli_id
             // ---    ####    ---
             foreach ($v1 as $k2 => $v2) {
                 if ($k2 === "slices") {
                     foreach ($v2 as $_ => $v3) {
+                        // ### Baggages Data ###
+                        $sli_id = "";
+                        $seg_ids = array();
+                        $pas_ids = array();
+                        $baggages = array();
+                        // ---    ####    ---
                         foreach ($v3 as $k4 => $v4) {
                             if ($k4 === "segments") {
                                 foreach ($v4 as $_ => $v5) {
                                     foreach ($v5 as $k6 => $v6) {
-                                        if ($k6 === "origin_terminal") {
+                                        if ($k6 === "passengers") {
+                                            foreach($v6 as $_ => $passenger) {
+                                                // ### Baggage Data ###
+                                                $pas_id = "";
+                                                $types = array();
+                                                $quans = array();
+                                                // ---    ####    ---
+                                                foreach($passenger as $pass_key => $pass_val) {
+                                                    if ($pass_key === "passenger_id") {
+                                                        $pas_id = $pass_val;
+                                                        array_push($pas_ids, $pas_id);
+                                                    } else if ($pass_key === "baggages") {
+                                                        foreach($pass_val as $_ => $baggage) {
+                                                            foreach($baggage as $bag_key => $bag_val) {
+                                                                if ($bag_key === "type") {
+                                                                    array_push($types, $bag_val);
+                                                                } else if ($bag_key === "quantity") {
+                                                                    array_push($quans, $bag_val);
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                $baggage = new Baggage($pas_id, $types, $quans);
+                                                array_push($baggages, $baggage);
+                                            }
+                                        } else if ($k6 === "origin_terminal") {
                                             array_push($source_terminal, $v6);
                                         } else if ($k6 === "origin") {
                                             foreach ($v6 as $k7 => $v7) {
@@ -934,7 +1043,7 @@ class Offer_request
                                             }
                                         } else if ($k6 === "departing_at") {
                                             array_push($departing_at, $v6);
-                                        } else if ($k6 === "arriving_at") { // Last entry scanned 
+                                        } else if ($k6 === "arriving_at") {
                                             array_push($arriving_at, $v6);
                                         } else if ($k6 === "operating_carrier") {
                                             foreach ($v6 as $k7 => $v7) {
@@ -942,11 +1051,17 @@ class Offer_request
                                                     array_push($airline, $v7);
                                                 }
                                             }
+                                        } else if ($k6 === "id") {
+                                            array_push($seg_ids, $v6);
                                         }
                                     }
                                 }
+                            } else if ($k4 === "id") {
+                                $sli_id = $v4;
                             }
                         }
+                        $offer_baggage = new Baggages($sli_id, $seg_ids, $pas_ids, $baggages);
+                        array_push($baggage_per_sli, $offer_baggage);
                     }
                 } else if ($k2 === "total_currency") {
                     $total_currency = $v2;
@@ -977,7 +1092,8 @@ class Offer_request
                 $departing_at,
                 $arriving_at,
                 $airline,
-                $total_amount
+                $total_amount,
+                $baggage_per_sli
             );
             array_push($this->offers, $offer);
             if ($count === self::MAX_OFFERS) {
@@ -993,7 +1109,7 @@ class Offer_request
      * Offer information sanitization
      * and creation using the Offer class.
      */
-    private function create_offer($offer_id, $offer_ttl, $source_iata_code, $source_airport, $source_terminal, $destination_iata_code, $destination_airport, $destination_terminal, $departing_at, $arriving_at, $airline, $total_amount)
+    private function create_offer($offer_id, $offer_ttl, $source_iata_code, $source_airport, $source_terminal, $destination_iata_code, $destination_airport, $destination_terminal, $departing_at, $arriving_at, $airline, $total_amount, $baggage)
     {
         $size_arr = count($source_iata_code);
         if (
@@ -1018,10 +1134,24 @@ class Offer_request
             $arriving_at,
             $this->cabin_class,
             $total_amount,
-            $airline
+            $airline,
+            $baggage
         );
     }
 
+    /**
+     * Print page count (container --> page_count_index).
+     */
+    private function print_num_offers($count_offers) {
+        if ($count_offers > self::MAX_OFFERS) {
+            $received_offers = $count_offers;
+            $count_offers = self::MAX_OFFERS;
+            console_log('\t- Offers received: ' . $received_offers . ' | Actual: ' . $count_offers);
+        } else {
+            console_log('\t- Offers received: ' . $count_offers);
+        }
+        echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("page_count").innerHTML = "5/'.$count_offers. '"; document.getElementById("page_count_index").style.display = "inline-flex"; }); </script>';
+    }
 }
 
 // ###### Duffel Offer request arguments ######

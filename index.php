@@ -20,6 +20,7 @@ function add_scripts()
     wp_enqueue_style('plugin-flight-search-stylesheet', plugin_dir_url(__FILE__) . 'style/flight_search.css');
     wp_enqueue_style('plugin-flight-search-results-stylesheet', plugin_dir_url(__FILE__) . 'style/flight_search_results.css');
     wp_enqueue_script('plugin-flight-search-calender-scripts', plugin_dir_url(__FILE__) . 'scripts/flight_search_calender.js');
+    wp_enqueue_script('plugin-flight-results-scripts', plugin_dir_url(__FILE__) . 'scripts/flight_results_pages.js');
     wp_enqueue_script('plugin-passenger-form-scripts', plugin_dir_url(__FILE__) . 'scripts/passenger_form.js');
 }
 add_action('wp_enqueue_scripts', 'add_scripts');
@@ -72,6 +73,7 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     // Define constants
     define("IATA_FROM", $iata_code_from);
     define("IATA_TO", $iata_code_to);
+    define("MAX_OFFERS_PER_PAGE", 5);
     // ***
 
     $passengers = new Passengers();
@@ -95,10 +97,16 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     foreach ($offers as $index => $offer) {
         if ($airline_name === "None" || $offer->compare_airline($airline_name)) {
             // console_log("Input airline name: " . $airline_name);
-            $offer->print_html(0);
+            if (count($hashmap_offers) >= MAX_OFFERS_PER_PAGE) {
+                $offer->print_html(0, 1);
+            } else {
+                $offer->print_html(0, 0);
+            }
+            
             $hashmap_offers[$offer->get_offer_id()] = $offer;
         }
     }
+    //$offers[0]->debug_baggage();
 }
 
 // Offer ID --> $_POST['offer_submit']

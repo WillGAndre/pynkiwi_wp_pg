@@ -84,6 +84,7 @@ function send_payment() {
     if (pass_list_len == max_psgs) {
         let url = new URL("https://pynkiwi.wpcomstaging.com/?page_id=2475");
         url.searchParams.append("pay_offer_id", offer_id);
+        url.searchParams.append("total_amount", total_amount); // includes currency
 
         let index = 0;
         while (index < pass_list_len) {
@@ -105,18 +106,46 @@ function send_payment() {
  * @param {String} total_amount 
  */
 function get_total_amount(total_amount) {
+    let total_amount_arr = total_amount.split(' ');
+    let amount = parseFloat(total_amount_arr[0]);
+    let currency = total_amount_arr[1];
+
+    if (check_passenger_services() != -1) {
+        let index = 0;
+        while (index < passenger_list.length) {
+            if (passenger_types[index] == "adult") {
+                let passenger = passenger_list[index];
+                amount += passenger.get_services_price();
+
+                if (passenger.get_currency() != currency) {
+                    console.log('Total amount and services currency are diff.');
+                }
+            }
+            index++;
+        }
+    }
+    return amount + ' ' + currency;
+}
+
+/**
+ * Returns index of the first
+ * passenger found with additional
+ * services. If no passenger is found,
+ * returns -1.
+ */
+function check_passenger_services() {
     let index = 0;
-    let currency = passenger_list[0].get_services_currency();
-    total_amount = parseInt(total_amount);
     while (index < passenger_list.length) {
-        if (passenger_types[index] === "adult") {
+        if (passenger_types[index] == "adult") {
             let passenger = passenger_list[index];
-            total_amount += passenger.get_services_price();
+            if (passenger.get_services().length > 0) {
+                return index;
+            }
         }
         index++;
     }
-    return total_amount + ' ' + currency;
-}
+    return -1;
+} 
 
 function refresh() {
     console.log('\t- Deleting passenger list');
@@ -322,6 +351,10 @@ class Passenger {
         if (this.infant_id != "") {
             url.searchParams.append(key_format + 'infant_id', this.infant_id);   
         }
+    }
+
+    get_services() {
+        return this.services;
     }
 
     get_services_price() {
