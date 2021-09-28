@@ -2,8 +2,6 @@
 // Copyright 2021 - PYNKIWI
 
 // ###### Auxilary ######
-
-
 class Baggages {
     public $sli_id;    // set all: private
     public $seg_ids;   
@@ -23,8 +21,14 @@ class Baggages {
      * (normal offer only) this function 
      * will print the text bellow 
      * the price button.
+     * 
+     * Args:
+     *  $single_offer -> Same principle as
+     *  Offer's print_html() if $single_offer = 1,
+     *  then print in current offer tab otherwise
+     *  print in flight results.
      */
-    public function print_baggage_html_off_req() {
+    public function print_baggage_html($single_offer) {
         $total_seg = count($this->seg_ids);
         $total_pas = count($this->pass_ids);
         $total_bag = count($this->baggages);
@@ -41,17 +45,22 @@ class Baggages {
             }
         } else {
             console_log(' [*] Debug: $total_bag->{'.$total_bag.'} $total_pas->{'.$total_pas.'} $total_seg->{'.$total_seg. '} $total_bag / $total_pas === $total_seg');
-            console_log('\t- Exception, number of bagges per passenger should be equal to the number of segments');
+            console_log('\t- Exception, number of bags per passenger should be equal to the number of segments');
             return;
         }
 
-        $code = '<div id=\'baggage_text\'>'; 
-        if (count(array_unique($total_bag_quans)) === 1 && 1 === count(array_unique($total_bag_types))) {
-            console_log(' [*] Debug: Printing baggage text');
+        if ($single_offer) {
+            $code = 'document.getElementById("curr-bags_text").innerHTML = "'; 
+            $msg = '';
+        } else {
+            $code = '<div id=\'baggage_text\'>';
             $msg = 'Includes ';
+        }
+
+        if (count(array_unique($total_bag_quans)) === 1 && 1 === count(array_unique($total_bag_types))) {
             $index = 0;
-            while($index < count($total_bag_quans[0])) {
-                if ($index > 0) {
+            while ($index < count($total_bag_quans[0])) {
+                if ($index > 0 && $msg !== '' && $msg !== 'Includes ') {
                     $msg = $msg . ' and ';
                 }
                 $type = str_replace('_', ' ', $total_bag_types[0][$index]);
@@ -59,13 +68,25 @@ class Baggages {
                 $msg = $msg . $quan . ' ' . $type . ' bag';
                 if (intval($quan) > 1) {
                     $msg = $msg . 's';
-                } 
+                }
                 $index++;
             }
-            $code = $code . $msg . '</div>';
-            return $code;
+        } else if (count(array_unique($total_bag_quans)) > 1) {
+            console_log('\t- Exception, some passengers have different baggage allocations.');
+        }
+
+        if ($single_offer && $msg === '') {
+            console_log('\t- Bags per passenger: 0');
+            return 'document.getElementById("entry-bag").style.display = "none"; ';
+        } else if ($msg === 'Includes ') {
+            return;
+        }
+
+        if ($single_offer) {
+            console_log('\t- Bags per passenger: {'.$msg.'}');
+            return $code . $msg . ' per passenger."; ';
         } else {
-            // TODO: if passengers have diff. baggages
+            return $code . $msg . '</div>';
         }
         return;
     }

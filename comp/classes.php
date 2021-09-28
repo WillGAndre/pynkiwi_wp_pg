@@ -3,17 +3,7 @@
 // WordPress --> WP
 
 /*
-    TODO:
-        --> Add offer payment + special options (baggage, choosing seats, etc..)
-
-            Continue to add info in account page, when payment button clicked.
-            (Offer -> print_html())
-
-            *1 Legal notice - https://help.duffel.com/hc/en-gb/articles/360021056640
-
-
-        --> When offer request is created, passenger information should
-            be double checked with passenger info returned in offers.
+    *1 Legal notice - https://help.duffel.com/hc/en-gb/articles/360021056640
 */
 
 /** ###### Single Offer ######
@@ -61,6 +51,9 @@ class Single_Offer
             console_log('[*] Updated Offer');
             $response = gzdecode($res);
             $resp_decoded = json_decode($response);
+
+            // debug 
+            // var_dump($resp_decoded);
 
             // TODO!
             if ($resp_decoded->meta->status === 422 && $resp_decoded->errors[0]->title === "Requested offer is no longer available") {
@@ -487,14 +480,7 @@ class Offer_Payment_Info
     }
 }
 
-/*
-    TODO:
-    if offer has carry on bag, then specify
-    so in offer (inluding single offers also).
-    Get carry on bag symbol from Duffel,
-    text just before the offer payment button
-    and and in the current offer options. 
-*/
+
 /** ###### Offer ######
  * Offer class used to show
  * offers received from Offer_request
@@ -596,7 +582,8 @@ class Offer
         if ($single_offer):
             console_log('[*] Printing Single Offer | Offer ttl: ' . $this->ttl);
 
-            $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
+            $baggage_html = $this->check_baggage_per_slice(1);
+            $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ' . $baggage_html;
 
             if ($trips === 1) {
                 $init_script = $init_script . 'document.getElementById("sub_flights").style.display = "none"; ';
@@ -629,8 +616,7 @@ class Offer
             } else {
                 console_log('[*] Printing offer from: ' . IATA_FROM . '  to  ' . IATA_TO . ' | Offer ttl: ' . $this->ttl);
             }
-            // TODO: check if baggage options from [0] are equal to [1].
-            $baggage_html = $this->baggage_per_sli[0]->print_baggage_html_off_req();
+            $baggage_html = $this->check_baggage_per_slice(0);
             if ($trips === 1) { // One-way
                 $airline = $this->get_airlines_div($this->airline);
                 $departing_time = substr($this->departing_at[0], 11, 5);
@@ -823,9 +809,27 @@ class Offer
         return $div;
     }
 
-    // DEBUG
-    public function debug_baggage() {
-        var_dump($this->baggage_per_sli);
+    /**
+     * Check if $this->baggage_per_sli is fully
+     * syncronized (same baggage allocations for
+     * all passengers), if so print html code based
+     * on argument (Auxilatry -> class Baggages -> print_baggage_html).
+     */
+    public function check_baggage_per_slice($single_offer) {
+        $total_baggages_per_sli = count($this->baggage_per_sli);
+
+        if ($total_baggages_per_sli > 1) {
+            $fst_sli_baggage = $this->baggage_per_sli[0];
+            $index = 1;
+            while ($index < $total_baggages_per_sli) {
+                if (count($fst_sli_baggage) !== count($this->baggage_per_sli[$index])) {
+                    console_log('\t- Exception, baggage allocation not syncronized between slices');
+                    return '';
+                }
+                $index++;
+            }
+        }
+        return $this->baggage_per_sli[0]->print_baggage_html($single_offer);
     }
 }
 

@@ -6,7 +6,7 @@ function next_page() {
     let printed_offers = parseInt(page_count_arr[0]);
     let total_offers = parseInt(page_count_arr[1]);
 
-    if (printed_offers <= total_offers) {
+    if (printed_offers < total_offers) {
         let i = 0;
         while (i < child_nodes.length) {
             let elem = child_nodes.item(i);

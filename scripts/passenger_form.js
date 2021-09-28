@@ -42,8 +42,6 @@ function get_passenger_ids() {
     }
 }
 
-// TODO: change age restrictions,
-//       if adult show, if not remove
 /**
  * Function triggered onchange of input[type="date"],
  * if current passenger age <= 1 (infant), remove
