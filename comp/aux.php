@@ -218,6 +218,12 @@ function get_iata_code($lat, $lon)
     return $iata_code;
 }
 
+function format_date($date) {
+    $real_date = substr($date, 0, 10);
+    $real_time = substr($date, 11, 8);
+    return $real_date . ' ' . $real_time;
+}
+
 // first and second date must be > than current date (TODO!)
 function check_input_dates($first_date, $second_date)
 {

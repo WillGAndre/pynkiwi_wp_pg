@@ -53,7 +53,7 @@ class Single_Offer
             $resp_decoded = json_decode($response);
 
             // debug 
-            // var_dump($resp_decoded);
+            var_dump($resp_decoded);
 
             // TODO!
             if ($resp_decoded->meta->status === 422 && $resp_decoded->errors[0]->title === "Requested offer is no longer available") {
@@ -326,13 +326,12 @@ class Offer_Payment_Info
      * Function to print html (echo from php) in /account
      * TODO:
      *     *-> Add support for seat selection.
-     *     *-> Add offer payment support (also in wordpress).
-     *          \
-     *           --> Reformat passenger form and use data to send payment options.
      */
     public function print_html() {
         $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
-        $script = $this->get_refund_change_scripts($init_script) . $this->get_passenger_count_script();
+        $script = $this->get_refund_change_scripts($init_script);
+        $script = $script . $this->get_passenger_count_script();
+        $script = $script . $this->get_payment_requirement_scripts();
         $script = $script . $this->check_doc_required();
         $script = $script . $this->get_additional_baggage_scripts();
         $script = $script . $this->get_total_amount() . '}); </script>';
@@ -344,11 +343,12 @@ class Offer_Payment_Info
      * in order to book flights.
      */
     private function check_doc_required() {
-        $code = '';
         if ($this->passenger_identity_documents_required == false) {
-            $code = $code . 'document.getElementById("passport-info").style.display = "none"; ';
+            console_log('\t- Id docs required: 0');
+            return 'document.getElementById("passport-info").style.display = "none"; ';
         }
-        return $code;
+        console_log('\t- Id docs required: 1');
+        return '';
     }
 
     private function get_total_amount() {
@@ -440,10 +440,7 @@ class Offer_Payment_Info
         return $code;
     }
 
-    /**
-     * TODO: 
-     *     *-> Add button interaction
-     */
+    // TODO:Add button interaction
     private function get_refund_change_scripts($script) {
         $refund_before_departure = $this->conditions->refund_before_departure;
         $change_before_departure = $this->conditions->change_before_departure;
@@ -477,6 +474,26 @@ class Offer_Payment_Info
      */
     private function get_passenger_count_script() {
         return 'document.getElementById("pass_count").innerHTML = "0/' . count($this->passenger_ids) . ' Passengers"; ';
+    }
+
+    // TODO: Implement later payment option (in php and js)
+    private function get_payment_requirement_scripts() {
+        if ($this->payment_requirements->requires_instant_payment) {
+            console_log('\t- Instant payment required: 1');
+            return 'document.getElementById("entry-payment").style.display = "none"; ';
+        } else {
+            console_log('\t- Instant payment required: 0');
+            $code = 'document.getElementById("entry-payment").innerHTML += "';
+            $date_payment_req_by = format_date($this->payment_requirements->payment_required_by);    
+            $code = $code . '<div class=\'text imp\'>Payment required by: '.$date_payment_req_by.'</div>';
+
+            if ($this->payment_requirements->price_guarantee_expires_at != null) {
+                $date_price_guarantee_exp = format_date($this->payment_requirements->price_guarantee_expires_at);
+                $code = $code . '<div class=\'text imp\'>Price guarantee expires at: '.$date_price_guarantee_exp.'</div>';
+            }
+            $code = $code . '<div class=\'text imp\'><input type=\'checkbox\' id=\'input_pay_later\' style=\'margin-right: 1.2px;\'/>Pay later?</div>';
+            return $code . '"; ';
+        }
     }
 }
 

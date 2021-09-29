@@ -160,7 +160,7 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
     echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("main_dash").style.display = "block"; '.$offer_id_html.' }); </script>';
 }
 
-// TODO 
+
 if (isset($_GET['pay_offer_id'])) {
     alert('Check - Payment');
     $fst_pass_id = $_GET['p_0_id'];
