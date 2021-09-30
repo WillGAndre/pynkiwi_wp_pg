@@ -19,6 +19,7 @@ let passenger_types = [];
  * this arr must be empty.
  */
 let infants_not_allocated = [];
+let infants_allocated = [];
 
 let init_flag = 1;
 function init() {
@@ -75,11 +76,12 @@ function send_payment() {
     let max_psgs = document.getElementById("pass_count").innerHTML[2];
     let total_amount = document.getElementById("offer_payment");
     let pass_list_len = passenger_list.length;
+    let infants_allocated_list_len = infants_allocated.length;
     if (total_amount != null) {
         total_amount = get_total_amount(total_amount.innerHTML);
     }
     console.log('\t- Total amount: '+total_amount+' ; Offer id: '+offer_id);
-    if (pass_list_len == max_psgs) {
+    if (pass_list_len+infants_allocated_list_len == max_psgs && infants_not_allocated.length == 0) {
         let url = new URL("https://pynkiwi.wpcomstaging.com/?page_id=2475");
         url.searchParams.append("pay_offer_id", offer_id);
         url.searchParams.append("total_amount", total_amount); // includes currency
@@ -94,7 +96,7 @@ function send_payment() {
         window.location.href = url;
         // https://pynkiwi.wpcomstaging.com/?page_id=2475&pay_offer_id=off_0000ABeUHFGL98sK7wUHKK&p_0_id=pas_0000ABeUEc6Rln6s63bZmF&p_0_name=will+pere&p_0_gender=male&p_0_phone=111+111+111&p_0_email=will%40test.com&p_0_city=porto&p_0_postcode=111-11&p_0_birthday=1996-06-22&p_0_ase_0_id=ase_0000ABeUIFssrtvDBiaDaM&p_0_ase_0_quan=0&p_1_id=pas_0000ABeUEc6Rln6s63bZmG&p_1_name=maria+mei&p_1_gender=female&p_1_phone=111+111+111+11&p_1_email=maria%40test.com&p_1_city=porto&p_1_postcode=111-11&p_1_birthday=1990-07-10&p_1_ase_0_id=ase_0000ABeUIFssrtvDBiaDaM&p_1_ase_0_quan=1
     } else {
-        alert('Missing passenger information!');
+        alert('Missing passenger and/or passenger information!');
     }
 }
 
@@ -170,9 +172,13 @@ function add_passenger() {
     let services = [];
     let infant_id = "";
     let index = -1;
+    let allocated_service = 0;
 
     if (age <= 1) { // infant_without_seat
-        index = get_index('infant_without_seat');
+        //index = get_index('infant_without_seat');
+        alert('Infants don\'t need to be added');
+        clear_form();
+        return;
     } else {
         if (age < 14) { // child
             index = get_index('child');
@@ -201,6 +207,7 @@ function add_passenger() {
                     if (parseInt(quan) != 0) {
                         price = document.getElementById('price-' + ase_id).innerHTML;
                         services.push(new Service(ase_id, quan, price));
+                        allocated_service++;
                     }
                 }
                 ase_index++;
@@ -222,7 +229,6 @@ function add_passenger() {
     let phone = document.getElementById('entry-phone').value;
     let passport_id = "";
     let passport_exp_date = "";
-    // passport emission country should be the same as the country above
 
     if (document.getElementById("passport-info").style.display != "none") {
         passport_id = document.getElementById("entry-doc_id").value;
@@ -237,14 +243,20 @@ function add_passenger() {
         passport_id, passport_exp_date
     );
     let max_psgs = document.getElementById("pass_count").innerHTML[2];
-    if (psg.sanitize_input() && passenger_list.length < max_psgs) {
+    let allocated_passengers = passenger_list.length+infants_allocated.length
+    if (psg.sanitize_input() && allocated_passengers < max_psgs) {
         passenger_list.push(psg);
-        document.getElementById("pass_count").innerHTML = passenger_list.length + "/" + max_psgs + " Passengers";
+        allocated_passengers++;
+        if (infant_id != "") {
+            infants_allocated.push(infant_id);
+            allocated_passengers++;
+            console.log('Added new passenger plus infant - Current list count: ' + allocated_passengers); 
+        } else {
+            console.log('Added new passenger - Current list count: ' + allocated_passengers); 
+        }
+        document.getElementById("pass_count").innerHTML = allocated_passengers + "/" + max_psgs + " Passengers";
         clear_form();
-        console.log('Added new passenger - Current list count: ' + passenger_list.length); 
-    } else {
-        // Beacuse the service is created beforehand,
-        // if the pass info is invalid then pop();
+    } else if (allocated_service > 0) {
         services.pop();
     }
 }
@@ -324,6 +336,7 @@ class Passenger {
         let key_format = "p_"+index+"_";
 
         url.searchParams.append(key_format + 'id', this.id);
+        url.searchParams.append(key_format + 'title', this.title);
         url.searchParams.append(key_format + 'name', this.name);
         url.searchParams.append(key_format + 'gender', this.gender);
         url.searchParams.append(key_format + 'phone', this.phone);
@@ -417,7 +430,7 @@ function clear_form() {
     document.getElementById('entry-bday').value = "";
     document.getElementById('entry-country').value = "";
     document.getElementById('entry-phone').value = "";
-    let infant_input = document.getElementById("infant-input");
+    let infant_input = document.getElementById("infant-discl");
     if (infant_input != null) {
         if (infants_not_allocated.length == 0) {
             infant_input.style.display = "none";

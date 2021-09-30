@@ -53,7 +53,7 @@ class Single_Offer
             $resp_decoded = json_decode($response);
 
             // debug 
-            var_dump($resp_decoded);
+            // var_dump($resp_decoded);
 
             // TODO!
             if ($resp_decoded->meta->status === 422 && $resp_decoded->errors[0]->title === "Requested offer is no longer available") {
@@ -420,7 +420,10 @@ class Offer_Payment_Info
             $code = $code . '"; ';
         }
         $code = $service_ids . '"; ' . $code;
-        console_log('\t- Services -> Additional Bags: ' . $flag_add_baggage);
+        if ($flag_add_baggage === 0) {
+            $code = $code . ' document.getElementById("bags-title").style.display = "none"; ';
+        }
+        console_log('\t- Additional Bags: ' . $flag_add_baggage);
         return $code;
     }
 

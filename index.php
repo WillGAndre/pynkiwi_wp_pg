@@ -160,9 +160,55 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
     echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("main_dash").style.display = "block"; '.$offer_id_html.' }); </script>';
 }
 
+// TODO: Set type of payment.
+if (isset($_GET['pay_offer_id'])) { 
+    $offer_id = $_GET['pay_offer_id'];
+    $duffel_total_amount = $_GET['total_amount']; // Includes currency ; type --> balance
+    
+    $passengers = array();
+    $services = array();
+    $index = 0;
+    while(isset($_GET['p_'.$index.'_id'])) {
+        $query_format = 'p_'.$index.'_';
+        $passenger = new stdClass();
+        $full_name = explode(' ', $_GET[$query_format . 'name']);
+        $gender = $_GET[$query_format . 'gender'];
+        if ($gender === 'male') {
+            $gender = 'm';
+        } else {
+            $gender = 'f';
+        }
+        
+        $passenger->title = $_GET[$query_format . 'title'];
+        $passenger->phone_number = $_GET[$query_format . 'phone'];
+        if (isset($_GET[$query_format . 'infant_id'])) {
+            $passenger->infant_passenger_id = $_GET[$query_format . 'infant_id'];
+        }
+        if (isset($_GET[$query_format . 'doc_id'])) {   // ATM Duffel only supports passport
+            $passenger->unique_identifier = $_GET[$query_format . 'doc_id'];
+            $passenger->type = "passport";                                  
+            $passenger->issuing_country_code = country_to_code($_GET[$query_format . 'country']);
+            $passenger->doc_exp_date = $_GET[$query_format . 'doc_exp_date'];
+        }
+        $passenger->id = $_GET[$query_format . 'id'];
+        $passenger->given_name = $full_name[0];
+        $passenger->gender = $gender;
+        $passenger->family_name = $full_name[1];
+        $passenger->email = $_GET[$query_format . 'email'];
+        $passenger->born_on = $_GET[$query_format . 'birthday'];
 
-if (isset($_GET['pay_offer_id'])) {
-    alert('Check - Payment');
-    $fst_pass_id = $_GET['p_0_id'];
-    console_log('Fst Pass id: '.$fst_pass_id);
+        $ase_index = 0;
+        while(isset($_GET[$query_format . 'ase_' . $ase_index . '_id'])) {
+            $service = new stdClass();
+            $service->id = $_GET[$query_format . 'ase_' . $ase_index . '_id'];
+            $service->quantity = $_GET[$query_format . 'ase_' . $ase_index . '_quan'];
+            array_push($services, $service);
+            $ase_index++;
+        }
+        array_push($passengers, $passenger);
+        $index++;
+    }
+
+    var_dump($passengers);
+    var_dump($services);
 }
