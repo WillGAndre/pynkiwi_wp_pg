@@ -32,6 +32,8 @@ include_once(plugin_dir_path(__FILE__) . 'comp/classes.php');
 
 $hashmap_offers = array();  // Global offers hasmap (index -> offer id, value -> offer)
 
+//                  --- *** ---
+
 if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     $first_date = $_POST['input-date-first'];
     $second_date = $_POST['input-date-second'];
@@ -109,7 +111,8 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     //$offers[0]->debug_baggage();
 }
 
-// Offer ID --> $_POST['offer_submit']
+//                  --- *** ---
+
 /**
  * On Offer price click proc check_user.
  */
@@ -139,6 +142,7 @@ function check_user()
     endif;
 }
 
+//                  --- *** ---
 
 // Trigger -> onclick of offer price button (redirect to account)
 /**
@@ -160,13 +164,36 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
     echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("main_dash").style.display = "block"; '.$offer_id_html.' }); </script>';
 }
 
-// TODO: Set type of payment.
+
+//                  --- *** ---
+
+
+// TODO: Send payment via stripe / Organize data for duffel
+/**
+ * On current offer payment click,
+ * the frontend (js), redirects
+ * the user back to the account
+ * dashboard (to be changes).
+ * This redirect includes query
+ * parameters in the url, later
+ * used to send relevant passenger
+ * info to Duffel
+ */
 if (isset($_GET['pay_offer_id'])) { 
     $offer_id = $_GET['pay_offer_id'];
-    $duffel_total_amount = $_GET['total_amount']; // Includes currency ; type --> balance
-    
+    $duffel_total_amount = $_GET['total_amount']; // Includes currency ; type --> balance (in payments)
+    $pay_later = $_GET['type']; // if "instant" services and payments array are valid else if "hold" serv./paym. not valid.
     $passengers = array();
     $services = array();
+    get_url_info($passengers, $services);
+}
+
+
+/**
+ * Extracts passenger and
+ * services info from the url.
+ */
+function get_url_info($passengers, $services) {
     $index = 0;
     while(isset($_GET['p_'.$index.'_id'])) {
         $query_format = 'p_'.$index.'_';
@@ -185,10 +212,14 @@ if (isset($_GET['pay_offer_id'])) {
             $passenger->infant_passenger_id = $_GET[$query_format . 'infant_id'];
         }
         if (isset($_GET[$query_format . 'doc_id'])) {   // ATM Duffel only supports passport
-            $passenger->unique_identifier = $_GET[$query_format . 'doc_id'];
-            $passenger->type = "passport";                                  
-            $passenger->issuing_country_code = country_to_code($_GET[$query_format . 'country']);
-            $passenger->doc_exp_date = $_GET[$query_format . 'doc_exp_date'];
+            $identity_documents = array();
+            $doc_info = new stdClass();
+            $doc_info->unique_identifier = $_GET[$query_format . 'doc_id'];
+            $doc_info->type = "passport";
+            $doc_info->issuing_country_code = country_to_code($_GET[$query_format . 'country']);
+            $doc_info->doc_exp_date = $_GET[$query_format . 'doc_exp_date'];
+            array_push($identity_documents, $doc_info);
+            $passenger->identity_documents = $identity_documents;
         }
         $passenger->id = $_GET[$query_format . 'id'];
         $passenger->given_name = $full_name[0];
@@ -209,6 +240,7 @@ if (isset($_GET['pay_offer_id'])) {
         $index++;
     }
 
+    // debug
     var_dump($passengers);
     var_dump($services);
 }

@@ -77,6 +77,11 @@ function send_payment() {
     let total_amount = document.getElementById("offer_payment");
     let pass_list_len = passenger_list.length;
     let infants_allocated_list_len = infants_allocated.length;
+    let pay_later_flag = 0;
+    let input_pay_later = document.getElementById("input_pay_later");
+    if (input_pay_later != null && input_pay_later.checked) {
+        pay_later_flag++;
+    }
     if (total_amount != null) {
         total_amount = get_total_amount(total_amount.innerHTML);
     }
@@ -85,6 +90,11 @@ function send_payment() {
         let url = new URL("https://pynkiwi.wpcomstaging.com/?page_id=2475");
         url.searchParams.append("pay_offer_id", offer_id);
         url.searchParams.append("total_amount", total_amount); // includes currency
+        if (pay_later_flag) {
+            url.searchParams.append("type", "hold");
+        } else {
+            url.searchParams.append("type", "instant");
+        }
 
         let index = 0;
         while (index < pass_list_len) {
@@ -332,7 +342,7 @@ class Passenger {
 
     // Sets passenger info via url query format
     // key format -> p_index_(id/name/email/etc)
-    set_passenger_info(url, index) {
+    set_passenger_info(url, index, pay_later_flag) {
         let key_format = "p_"+index+"_";
 
         url.searchParams.append(key_format + 'id', this.id);
@@ -349,7 +359,7 @@ class Passenger {
             url.searchParams.append(key_format + 'doc_exp_date', this.doc_exp_date);
         }
 
-        if (this.services.length != 0) {
+        if (pay_later_flag == 0 && this.services.length != 0) {
             let ase_index = 0;
             while (ase_index < this.services.length) {
                 let service = this.services[ase_index];

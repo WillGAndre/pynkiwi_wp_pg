@@ -421,7 +421,8 @@ class Offer_Payment_Info
         }
         $code = $service_ids . '"; ' . $code;
         if ($flag_add_baggage === 0) {
-            $code = $code . ' document.getElementById("bags-title").style.display = "none"; ';
+            $clear = ' document.getElementById("bags-title").style.display = "none"; document.getElementById("entry-add-bag").style.display = "none"; ';
+            $code = $code . $clear;
         }
         console_log('\t- Additional Bags: ' . $flag_add_baggage);
         return $code;
@@ -479,11 +480,10 @@ class Offer_Payment_Info
         return 'document.getElementById("pass_count").innerHTML = "0/' . count($this->passenger_ids) . ' Passengers"; ';
     }
 
-    // TODO: Implement later payment option (in php and js)
     private function get_payment_requirement_scripts() {
         if ($this->payment_requirements->requires_instant_payment) {
             console_log('\t- Instant payment required: 1');
-            return 'document.getElementById("entry-payment").style.display = "none"; ';
+            return 'document.getElementById("entry-payment").style.display = "none"; document.getElementById("pay_later_discl").style.display = "none"; ';
         } else {
             console_log('\t- Instant payment required: 0');
             $code = 'document.getElementById("entry-payment").innerHTML += "';
@@ -494,7 +494,7 @@ class Offer_Payment_Info
                 $date_price_guarantee_exp = format_date($this->payment_requirements->price_guarantee_expires_at);
                 $code = $code . '<div class=\'text imp\'>Price guarantee expires at: '.$date_price_guarantee_exp.'</div>';
             }
-            $code = $code . '<div class=\'text imp\'><input type=\'checkbox\' id=\'input_pay_later\' style=\'margin-right: 1.2px;\'/>Pay later?</div>';
+            $code = $code . '<div class=\'text imp\'><input type=\'checkbox\' id=\'input_pay_later\' style=\'margin-right: 1.2px;\'/>Pay later?<span style=\'color: red; transform: translateX(21em); margin-top: 2em;\'>*1</span></div>';
             return $code . '"; ';
         }
     }
