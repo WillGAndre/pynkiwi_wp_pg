@@ -1,10 +1,6 @@
 /**
  * Script used to create list of passengers,
  * add new passengers and clear the current list.
- * 
- * TODO:
- *      --> add support for passenger_identity_documents_required
- * 
  */
 let passenger_list = [];
 let passenger_ids = [];
@@ -432,7 +428,6 @@ function get_age(input_date) {
     return age;
 }
 
-// TODO: Clear services and uncheck infant_input (not unchecking)
 function clear_form() {
     document.getElementById('entry-title').value = "";
     document.getElementById('entry-name').value = "";

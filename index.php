@@ -28,7 +28,9 @@ add_action('wp_enqueue_scripts', 'add_scripts');
 // Auxilary Functions 
 include_once(plugin_dir_path(__FILE__) . 'comp/aux.php');
 // Classes - Slices, Passengers, Offer Request, Offers
-include_once(plugin_dir_path(__FILE__) . 'comp/classes.php');
+include_once(plugin_dir_path(__FILE__) . 'comp/payment_classes.php');
+include_once(plugin_dir_path(__FILE__) . 'comp/current_offer_classes.php');
+include_once(plugin_dir_path(__FILE__) . 'comp/flight_search_classes.php');
 
 $hashmap_offers = array();  // Global offers hasmap (index -> offer id, value -> offer)
 
@@ -168,7 +170,11 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
 //                  --- *** ---
 
 
-// TODO: Send payment via stripe / Organize data for duffel
+/* TODO: 
+ / Send payment via stripe                                              (ISSUE --> #17)
+ / Integrate support for later payment (via payment endpoint)           (ISSUE --> #20)
+ / Integrate support for canceling order upon creation                  (ISSUE --> #22)
+*/
 /**
  * On current offer payment click,
  * the frontend (js), redirects
@@ -181,11 +187,25 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
  */
 if (isset($_GET['pay_offer_id'])) { 
     $offer_id = $_GET['pay_offer_id'];
-    $duffel_total_amount = $_GET['total_amount']; // Includes currency ; type --> balance (in payments)
-    $pay_later = $_GET['type']; // if "instant" services and payments array are valid else if "hold" serv./paym. not valid.
-    $passengers = array();
-    $services = array();
-    get_url_info($passengers, $services);
+    $duffel_total_amount = explode(' ', $_GET['total_amount']); // Includes currency
+    $pay_type = $_GET['type'];
+
+    $url_info = get_url_info();
+    $passengers = $url_info[0];
+    $services = $url_info[1];
+
+    $payments = array();
+    $payment = new stdClass();
+    $payment->type = "balance";
+    $payment->currency = $duffel_total_amount[1];
+    $payment->amount = $duffel_total_amount[0];
+    array_push($payments, $payment);
+
+    $selected_offers = array();
+    array_push($selected_offers, $offer_id);
+    
+    $order = new Order_request($pay_type, $services, $selected_offers, $payments, $passengers);
+    $order->create_order();
 }
 
 
@@ -193,8 +213,10 @@ if (isset($_GET['pay_offer_id'])) {
  * Extracts passenger and
  * services info from the url.
  */
-function get_url_info($passengers, $services) {
+function get_url_info() {
     $index = 0;
+    $passengers = array();
+    $services = array();
     while(isset($_GET['p_'.$index.'_id'])) {
         $query_format = 'p_'.$index.'_';
         $passenger = new stdClass();
@@ -239,8 +261,5 @@ function get_url_info($passengers, $services) {
         array_push($passengers, $passenger);
         $index++;
     }
-
-    // debug
-    var_dump($passengers);
-    var_dump($services);
+    return [$passengers, $services];
 }
