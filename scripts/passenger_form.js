@@ -68,6 +68,7 @@ function check_age() {
 }
 
 function send_payment() {
+    let user_id = document.getElementById("user_id").innerHTML;
     let offer_id = document.getElementById("curr_offer_id").innerHTML;
     let max_psgs = document.getElementById("pass_count").innerHTML[2];
     let total_amount = document.getElementById("offer_payment");
@@ -84,6 +85,7 @@ function send_payment() {
     console.log('\t- Total amount: '+total_amount+' ; Offer id: '+offer_id);
     if (pass_list_len+infants_allocated_list_len == max_psgs && infants_not_allocated.length == 0) {
         let url = new URL("https://pynkiwi.wpcomstaging.com/?page_id=2475");
+        url.searchParams.append("user_id", user_id);
         url.searchParams.append("pay_offer_id", offer_id);
         url.searchParams.append("total_amount", total_amount); // includes currency
         if (pay_later_flag) {

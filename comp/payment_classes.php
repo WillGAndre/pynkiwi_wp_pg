@@ -5,6 +5,49 @@
     *1 Legal notice - https://help.duffel.com/hc/en-gb/articles/360021056640
 */
 
+/*
+    TODO:
+        Create Order 
+            -> type of payment (instant/hold)
+            -> order_id;
+
+        In construct: Save order_id based on logged in user in WP.
+*/
+
+class Order {
+    private $user_id;
+
+    private $pay_type;
+    private $order_id;
+
+
+
+    public function __construct($user_id, $type, $order_id)
+    {
+        $this->user_id = $user_id;
+        $this->pay_type = $type;
+        $this->order_id = $order_id;
+        add_action('init', array($this, 'add_order')); // save_user
+    }
+
+    public function add_order() {
+        $params = array(
+            'type' => $this->pay_type
+        );
+        // distinguish between "instant"/"hold"
+        //return add_user_meta($this->user_id, ''.$this->order_id.'', $params);
+        console_log('add order: ' . add_user_meta($this->user_id, ''.$this->order_id.'', $params));
+    }
+
+    public function get_order() {
+        add_action('init', array($this, 'get_order_meta')); // get_order
+    }
+
+    public function get_order_meta() {
+        console_log( 'get order: ' . get_user_meta($this->user_id, ''.$this->order_id.'', true) );
+    }
+}
+
 /** ###### Order Request ######
  *  
  *  Class used to create Order,
@@ -61,7 +104,8 @@ class Order_request {
         }
     }
 
-    public function create_order() {
+    public function create_order($user_id) {
+        $order = 0;
         $url = "https://api.duffel.com/air/orders";
         $header = array(
             'Accept-Encoding: gzip',
@@ -88,9 +132,17 @@ class Order_request {
             console_log('[*] Order successfully created');
             $response = gzdecode($res);
             $resp_decoded = json_decode($response);
-            var_dump($resp_decoded);
+            
+            // debug
+            //var_dump($resp_decoded);
+
+            // ---
+            $data = $resp_decoded->data;
+            $order = new Order($user_id, $this->type, $data->id);
+            // -*-
         }
         curl_close($ch);
+        return $order;
     }
 }
 

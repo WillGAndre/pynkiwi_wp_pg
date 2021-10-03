@@ -11,13 +11,16 @@
  */
 class Single_Offer
 {
+    private $user_id;
+
     private $offer_id;
     private $offer;
     private $offer_payment_info;
     private $passenger_ids;
 
-    public function __construct($offer_id)
+    public function __construct($offer_id, $user_id)
     {
+        $this->user_id = $user_id;
         $this->offer_id = $offer_id;
         $this->passenger_ids = array();
     }
@@ -267,6 +270,10 @@ class Single_Offer
         return $this->offer;
     }
 
+    public function get_offer_payment_info() {
+        return $this->offer_payment_info;
+    }
+
     public function print_single_offer_html() {
         return $this->offer->print_html(1,0);
     }
@@ -275,8 +282,8 @@ class Single_Offer
         return $this->offer_payment_info->print_html();
     }
 
-    public function get_offer_payment_info() {
-        return $this->offer_payment_info;
+    public function print_user() {
+        echo '<div id=\'user_id\' style=\'display: none;\'>'.$this->user_id.'</div>';
     }
 }
 

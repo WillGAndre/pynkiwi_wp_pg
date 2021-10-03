@@ -134,9 +134,12 @@ function check_user()
 {
     if (is_user_logged_in()) :
         console_log('user logged in');
+        $current_user = wp_get_current_user();
+        $current_user_id = $current_user->ID;
         header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
             'page_id' => 2475,
-            'up_offer_id' => $_POST['offer_submit']
+            'up_offer_id' => $_POST['offer_submit'],
+            'user_id' => $current_user_id
         )));
     else : // TODO: !
         header('Location: https://pynkiwi.wpcomstaging.com/?page_id=2478');
@@ -154,11 +157,13 @@ function check_user()
  */
 if (isset($_GET['up_offer_id'])) {
     $offer_id = $_GET['up_offer_id'];
+    $user_id = $_GET['user_id'];
     show_current_offer($offer_id);
-    $single_offer = new Single_Offer($offer_id);
+    $single_offer = new Single_Offer($offer_id, $user_id);
     $single_offer->get_single_offer();
     $single_offer->print_single_offer_html();
     $single_offer->print_single_offer_opts_html();
+    $single_offer->print_user();
 }
 
 function show_current_offer($offer_id) { // TODO: Make current offer tab responsive
@@ -186,6 +191,7 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
  * info to Duffel
  */
 if (isset($_GET['pay_offer_id'])) { 
+    $user_id = $_GET['user_id'];
     $offer_id = $_GET['pay_offer_id'];
     $duffel_total_amount = explode(' ', $_GET['total_amount']); // Includes currency
     $pay_type = $_GET['type'];
@@ -204,8 +210,10 @@ if (isset($_GET['pay_offer_id'])) {
     $selected_offers = array();
     array_push($selected_offers, $offer_id);
     
-    $order = new Order_request($pay_type, $services, $selected_offers, $payments, $passengers);
-    $order->create_order();
+    $order_req = new Order_request($pay_type, $services, $selected_offers, $payments, $passengers);
+    $order = $order_req->create_order($user_id);
+    console_log('user id: '.$user_id);
+    $order->get_order();
 }
 
 
