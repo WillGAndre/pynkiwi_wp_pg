@@ -20,14 +20,12 @@ class Order {
     private $pay_type;
     private $order_id;
 
-
-
     public function __construct($user_id, $type, $order_id)
     {
         $this->user_id = $user_id;
         $this->pay_type = $type;
         $this->order_id = $order_id;
-        add_action('init', array($this, 'add_order')); // save_user
+        add_action('init', array($this, 'add_order'));
     }
 
     public function add_order() {
@@ -35,16 +33,21 @@ class Order {
             'type' => $this->pay_type
         );
         // distinguish between "instant"/"hold"
-        //return add_user_meta($this->user_id, ''.$this->order_id.'', $params);
-        console_log('add order: ' . add_user_meta($this->user_id, ''.$this->order_id.'', $params));
+        $meta_id = add_user_meta($this->user_id, ''.$this->order_id.'', $params);
+        if ($meta_id === false) {
+            console_log('\t- Unable to save user meta data');
+        } else {
+            console_log('\t- User meta saved successfully');
+        }
     }
 
     public function get_order() {
-        add_action('init', array($this, 'get_order_meta')); // get_order
+        add_action('init', array($this, 'get_order_meta'));
     }
 
     public function get_order_meta() {
-        console_log( 'get order: ' . get_user_meta($this->user_id, ''.$this->order_id.'', true) );
+        $arr = get_user_meta($this->user_id, ''.$this->order_id.'', true);
+        var_dump($arr);
     }
 }
 

@@ -332,12 +332,20 @@ class Offer_Payment_Info
     public function print_html() {
         $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
         $script = $this->get_refund_change_scripts($init_script);
+        $script = $script . $this->hide_user_dashboard();
         $script = $script . $this->get_passenger_count_script();
         $script = $script . $this->get_payment_requirement_scripts();
         $script = $script . $this->check_doc_required();
         $script = $script . $this->get_additional_baggage_scripts();
         $script = $script . $this->get_total_amount() . '}); </script>';
         echo $script;
+    }
+
+    /**
+     * Hide user dashboard (id: user-registration)
+     */
+    private function hide_user_dashboard() {
+        return 'document.getElementById("user-registration").style.display = "none"; ';
     }
 
     /**

@@ -179,6 +179,17 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
  / Send payment via stripe                                              (ISSUE --> #17)
  / Integrate support for later payment (via payment endpoint)           (ISSUE --> #20)
  / Integrate support for canceling order upon creation                  (ISSUE --> #22)
+ /
+ / --> Create Order dashboard, this dashboard
+       should include orders that have received
+       payment and orders on hold.
+
+       Within this dashboard, the user should
+       be able to pay a selected order (on "hold")
+       (and select additional baggage, etc),
+       show order info, email order info and 
+       (later implementation) cancel an order ("hold"/"instant").
+ /
 */
 /**
  * On current offer payment click,
