@@ -128,7 +128,7 @@ if (isset($_POST['flight-price'])) {
  * page with a main offer dashboard
  * where he can further customize his offer
  * and pay. The redirect url is sent with the
- * offer_id saved in 'offer_submit'.
+ * offer_id and the current user id.
  */
 function check_user()
 {
@@ -152,7 +152,7 @@ function check_user()
 // Trigger -> onclick of offer price button (redirect to account)
 /**
  * Upon receiving a redirect with a up_offer_id as 
- * a query argument, print offer options information 
+ * a query argument, print offer options info
  * as well as payment info (single offer request).
  */
 if (isset($_GET['up_offer_id'])) {
@@ -179,6 +179,7 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
  / Send payment via stripe                                              (ISSUE --> #17)
  / Integrate support for later payment (via payment endpoint)           (ISSUE --> #20)
  / Integrate support for canceling order upon creation                  (ISSUE --> #22)
+ / Refactor get_iata_code / get_lat_lon                                 (ISSUE --> #23)
  /
  / --> Create Order dashboard, this dashboard
        should include orders that have received
