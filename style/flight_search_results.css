@@ -134,3 +134,14 @@
   white-space: normal;
   font-size: small;
 }
+
+#baggage_text {
+  display: inline-flex;
+  flex-direction: column;
+  font-size: 10px;
+  color: #000000;
+  padding: 4px;
+  text-align: center;
+  transform: translateX(5px);
+  margin-top: 1.5em;
+}

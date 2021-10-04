@@ -20,6 +20,7 @@ function add_scripts()
     wp_enqueue_style('plugin-flight-search-stylesheet', plugin_dir_url(__FILE__) . 'style/flight_search.css');
     wp_enqueue_style('plugin-flight-search-results-stylesheet', plugin_dir_url(__FILE__) . 'style/flight_search_results.css');
     wp_enqueue_script('plugin-flight-search-calender-scripts', plugin_dir_url(__FILE__) . 'scripts/flight_search_calender.js');
+    wp_enqueue_script('plugin-flight-results-scripts', plugin_dir_url(__FILE__) . 'scripts/flight_results_pages.js');
     wp_enqueue_script('plugin-passenger-form-scripts', plugin_dir_url(__FILE__) . 'scripts/passenger_form.js');
 }
 add_action('wp_enqueue_scripts', 'add_scripts');
@@ -27,9 +28,13 @@ add_action('wp_enqueue_scripts', 'add_scripts');
 // Auxilary Functions 
 include_once(plugin_dir_path(__FILE__) . 'comp/aux.php');
 // Classes - Slices, Passengers, Offer Request, Offers
-include_once(plugin_dir_path(__FILE__) . 'comp/classes.php');
+include_once(plugin_dir_path(__FILE__) . 'comp/payment_classes.php');
+include_once(plugin_dir_path(__FILE__) . 'comp/current_offer_classes.php');
+include_once(plugin_dir_path(__FILE__) . 'comp/flight_search_classes.php');
 
 $hashmap_offers = array();  // Global offers hasmap (index -> offer id, value -> offer)
+
+//                  --- *** ---
 
 if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     $first_date = $_POST['input-date-first'];
@@ -72,6 +77,7 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     // Define constants
     define("IATA_FROM", $iata_code_from);
     define("IATA_TO", $iata_code_to);
+    define("MAX_OFFERS_PER_PAGE", 5);
     // ***
 
     $passengers = new Passengers();
@@ -95,13 +101,20 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     foreach ($offers as $index => $offer) {
         if ($airline_name === "None" || $offer->compare_airline($airline_name)) {
             // console_log("Input airline name: " . $airline_name);
-            $offer->print_html(0);
+            if (count($hashmap_offers) >= MAX_OFFERS_PER_PAGE) {
+                $offer->print_html(0, 1);
+            } else {
+                $offer->print_html(0, 0);
+            }
+            
             $hashmap_offers[$offer->get_offer_id()] = $offer;
         }
     }
+    //$offers[0]->debug_baggage();
 }
 
-// Offer ID --> $_POST['offer_submit']
+//                  --- *** ---
+
 /**
  * On Offer price click proc check_user.
  */
@@ -121,9 +134,12 @@ function check_user()
 {
     if (is_user_logged_in()) :
         console_log('user logged in');
+        $current_user = wp_get_current_user();
+        $current_user_id = $current_user->ID;
         header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
             'page_id' => 2475,
-            'up_offer_id' => $_POST['offer_submit']
+            'up_offer_id' => $_POST['offer_submit'],
+            'user_id' => $current_user_id
         )));
     else : // TODO: !
         header('Location: https://pynkiwi.wpcomstaging.com/?page_id=2478');
@@ -131,6 +147,7 @@ function check_user()
     endif;
 }
 
+//                  --- *** ---
 
 // Trigger -> onclick of offer price button (redirect to account)
 /**
@@ -140,11 +157,13 @@ function check_user()
  */
 if (isset($_GET['up_offer_id'])) {
     $offer_id = $_GET['up_offer_id'];
+    $user_id = $_GET['user_id'];
     show_current_offer($offer_id);
-    $single_offer = new Single_Offer($offer_id);
+    $single_offer = new Single_Offer($offer_id, $user_id);
     $single_offer->get_single_offer();
     $single_offer->print_single_offer_html();
     $single_offer->print_single_offer_opts_html();
+    $single_offer->print_user();
 }
 
 function show_current_offer($offer_id) { // TODO: Make current offer tab responsive
@@ -152,9 +171,114 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
     echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("main_dash").style.display = "block"; '.$offer_id_html.' }); </script>';
 }
 
-// TODO 
-if (isset($_GET['pay_offer_id'])) {
-    alert('Check - Payment');
-    $fst_pass_id = $_GET['p_0_id'];
-    console_log('Fst Pass id: '.$fst_pass_id);
+
+//                  --- *** ---
+
+
+/* TODO: 
+ / Send payment via stripe                                              (ISSUE --> #17)
+ / Integrate support for later payment (via payment endpoint)           (ISSUE --> #20)
+ / Integrate support for canceling order upon creation                  (ISSUE --> #22)
+ /
+ / --> Create Order dashboard, this dashboard
+       should include orders that have received
+       payment and orders on hold.
+
+       Within this dashboard, the user should
+       be able to pay a selected order (on "hold")
+       (and select additional baggage, etc),
+       show order info, email order info and 
+       (later implementation) cancel an order ("hold"/"instant").
+ /
+*/
+/**
+ * On current offer payment click,
+ * the frontend (js), redirects
+ * the user back to the account
+ * dashboard (to be changes).
+ * This redirect includes query
+ * parameters in the url, later
+ * used to send relevant passenger
+ * info to Duffel
+ */
+if (isset($_GET['pay_offer_id'])) { 
+    $user_id = $_GET['user_id'];
+    $offer_id = $_GET['pay_offer_id'];
+    $duffel_total_amount = explode(' ', $_GET['total_amount']); // Includes currency
+    $pay_type = $_GET['type'];
+
+    $url_info = get_url_info();
+    $passengers = $url_info[0];
+    $services = $url_info[1];
+
+    $payments = array();
+    $payment = new stdClass();
+    $payment->type = "balance";
+    $payment->currency = $duffel_total_amount[1];
+    $payment->amount = $duffel_total_amount[0];
+    array_push($payments, $payment);
+
+    $selected_offers = array();
+    array_push($selected_offers, $offer_id);
+    
+    $order_req = new Order_request($pay_type, $services, $selected_offers, $payments, $passengers);
+    $order = $order_req->create_order($user_id);
+    console_log('user id: '.$user_id);
+    $order->get_order();
+}
+
+
+/**
+ * Extracts passenger and
+ * services info from the url.
+ */
+function get_url_info() {
+    $index = 0;
+    $passengers = array();
+    $services = array();
+    while(isset($_GET['p_'.$index.'_id'])) {
+        $query_format = 'p_'.$index.'_';
+        $passenger = new stdClass();
+        $full_name = explode(' ', $_GET[$query_format . 'name']);
+        $gender = $_GET[$query_format . 'gender'];
+        if ($gender === 'male') {
+            $gender = 'm';
+        } else {
+            $gender = 'f';
+        }
+        
+        $passenger->title = $_GET[$query_format . 'title'];
+        $passenger->phone_number = $_GET[$query_format . 'phone'];
+        if (isset($_GET[$query_format . 'infant_id'])) {
+            $passenger->infant_passenger_id = $_GET[$query_format . 'infant_id'];
+        }
+        if (isset($_GET[$query_format . 'doc_id'])) {   // ATM Duffel only supports passport
+            $identity_documents = array();
+            $doc_info = new stdClass();
+            $doc_info->unique_identifier = $_GET[$query_format . 'doc_id'];
+            $doc_info->type = "passport";
+            $doc_info->issuing_country_code = country_to_code($_GET[$query_format . 'country']);
+            $doc_info->doc_exp_date = $_GET[$query_format . 'doc_exp_date'];
+            array_push($identity_documents, $doc_info);
+            $passenger->identity_documents = $identity_documents;
+        }
+        $passenger->id = $_GET[$query_format . 'id'];
+        $passenger->given_name = $full_name[0];
+        $passenger->gender = $gender;
+        $passenger->family_name = $full_name[1];
+        $passenger->email = $_GET[$query_format . 'email'];
+        $passenger->born_on = $_GET[$query_format . 'birthday'];
+
+        $ase_index = 0;
+        while(isset($_GET[$query_format . 'ase_' . $ase_index . '_id'])) {
+            $service = new stdClass();
+            $service->id = $_GET[$query_format . 'ase_' . $ase_index . '_id'];
+            $service->quantity = $_GET[$query_format . 'ase_' . $ase_index . '_quan'];
+            array_push($services, $service);
+            $ase_index++;
+        }
+        array_push($passengers, $passenger);
+        $index++;
+    }
+    return [$passengers, $services];
 }
