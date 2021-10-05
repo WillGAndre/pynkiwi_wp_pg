@@ -65,14 +65,13 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
         $to_text = str_replace(' ', '&', $to_text);
     }
 
-    // Activate when there are more credits
-    // $geo_arr_from = get_lat_lon($from_text);
-    // $iata_code_from = get_iata_code($geo_arr_from[0], $geo_arr_from[1]);
-    // $geo_arr_to = get_lat_lon($to_text);
-    // $iata_code_to = get_iata_code($geo_arr_to[0], $geo_arr_to[1]);
-
-    $iata_code_from = 'OPO';
-    $iata_code_to = 'YYZ'; // MAD
+    $geo_arr_from = get_lat_lon($from_text);
+    $geo_arr_to = get_lat_lon($to_text);
+    $iata_code_from = get_iata_code($from_text, $geo_arr_from[0], $geo_arr_from[1]);
+    $iata_code_to = get_iata_code($to_text, $geo_arr_to[0], $geo_arr_to[1]);
+    
+    //$iata_code_from = 'OPO';
+    //$iata_code_to = 'YYZ'; // MAD
 
     // Define constants
     define("IATA_FROM", $iata_code_from);

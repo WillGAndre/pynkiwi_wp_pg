@@ -2,6 +2,10 @@
 // Copyright 2021 - PYNKIWI
 
 // ###### Auxilary ######
+/*
+    Airports data -> https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat
+*/
+
 class Baggages {
     public $sli_id;    // set all: private
     public $seg_ids;   
@@ -383,9 +387,65 @@ function get_offer_ttl($offer_created_at, $offer_expires_at)
 
 /*
     TODO:
+    --> TESTING!!
+
     --> add user friendly 500 error message
         --> button to redirect to /flights-booking
 */
+
+/**
+ * Get distance (in Km)
+ * based on coord.
+ */
+function get_dist_km($lat1, $lon1, $lat2, $lon2) {
+	$theta = $lon1 - $lon2;
+  	$dist = sin(deg2rad($lat1)) * sin(deg2rad($lat2)) +  cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * cos(deg2rad($theta));
+  	$dist = acos($dist);
+  	$dist = rad2deg($dist);
+  	$miles = $dist * 60 * 1.1515;
+	return ($miles * 1.609344); // km
+}
+
+/**
+ * Get IATA code based on city name
+ * and country ($city_name), if 
+ * latitude and longitude is 
+ * provided then cities betwen
+ * 10 km of the given one will
+ * be used.
+ * 
+ * NOTE:
+ *  IATA code is the offical airport/
+ *  city code.
+ */
+function get_iata_code($city_name, $lat1, $lon1) {
+    $iata_code = "";
+    $file = plugin_dir_path(__FILE__) . '/airports.txt';
+    $fp = fopen($file, "r");
+    if ($fp) {
+        while (($buff = fgets($fp)) !== false) {
+            $buff_arr = explode(',', $buff);
+            $city = strval(trim($buff_arr[2], '"'));
+            $country = strval(trim($buff_arr[3], '"'));
+            $iata = strval(trim($buff_arr[4], '"'));
+            $lat2 = floatval($buff_arr[6]);
+            $lon2 = floatval($buff_arr[7]);
+
+            $city_name_arr = explode('&', $city_name);
+            if ($city_name_arr[0] === $city && $city_name_arr[1] === $country && $iata !== "\N") {
+                $iata_code = $iata;
+                break;
+            } else if (get_dist_km($lat1, $lon1, $lat2, $lon2) <= 10 && $iata !== "\N") {
+                $iata_code = $iata;
+                break;
+            }
+        }
+        fclose($fp);
+    } else {
+        echo 'File handler not set';
+    }
+    return $iata_code;
+}
 
 function get_lat_lon($city_name)
 {
@@ -425,50 +485,50 @@ function get_lat_lon($city_name)
     return [$lat, $lon];
 }
 
-function get_iata_code($lat, $lon)
-{
-    $url = 'https://airlabs.co/api/v9/nearby?lat=' . $lat . '&lng=' . $lon . '&distance=20&api_key=abafe3aa-bb01-444a-98b1-4d27266669cc';
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+// function get_iata_code($lat, $lon)
+// {
+//     $url = 'https://airlabs.co/api/v9/nearby?lat=' . $lat . '&lng=' . $lon . '&distance=20&api_key=abafe3aa-bb01-444a-98b1-4d27266669cc';
+//     $ch = curl_init();
+//     curl_setopt($ch, CURLOPT_URL, $url);
+//     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-    $iata_code = "";
+//     $iata_code = "";
 
-    $res = curl_exec($ch);
-    if ($err = curl_error($ch)) {
-        console_log('Error getting IATA code - ' . $err);
-        curl_close($ch);
-        error_msg();
-    } else {
-        $json = json_decode($res);
-        $json_arr = get_object_vars($json);
+//     $res = curl_exec($ch);
+//     if ($err = curl_error($ch)) {
+//         console_log('Error getting IATA code - ' . $err);
+//         curl_close($ch);
+//         error_msg();
+//     } else {
+//         $json = json_decode($res);
+//         $json_arr = get_object_vars($json);
 
-        /* Debug */
-        // var_dump($json);
+//         /* Debug */
+//         // var_dump($json);
 
-        foreach ($json_arr as $key => $entry) {
-            if ($key === "response") {
-                $res_arr = get_object_vars($entry);
+//         foreach ($json_arr as $key => $entry) {
+//             if ($key === "response") {
+//                 $res_arr = get_object_vars($entry);
 
-                foreach ($res_arr as $_ => $airports) {
-                    foreach ($airports as $_ => $airport_info) {
-                        $airport_info_arr = get_object_vars($airport_info);
-                        foreach ($airport_info_arr as $tag => $value) {
-                            if ($tag === "iata_code") {
-                                $iata_code = $value;
-                            }
-                            if ($iata_code !== "") {
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    curl_close($ch);
-    return $iata_code;
-}
+//                 foreach ($res_arr as $_ => $airports) {
+//                     foreach ($airports as $_ => $airport_info) {
+//                         $airport_info_arr = get_object_vars($airport_info);
+//                         foreach ($airport_info_arr as $tag => $value) {
+//                             if ($tag === "iata_code") {
+//                                 $iata_code = $value;
+//                             }
+//                             if ($iata_code !== "") {
+//                                 break;
+//                             }
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+//     }
+//     curl_close($ch);
+//     return $iata_code;
+// }
 
 function format_date($date) {
     $real_date = substr($date, 0, 10);
@@ -537,4 +597,3 @@ function alert($msg)
     echo '</script>';
 }
 // ###### EOF ######
-?>
