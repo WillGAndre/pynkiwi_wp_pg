@@ -485,51 +485,6 @@ function get_lat_lon($city_name)
     return [$lat, $lon];
 }
 
-// function get_iata_code($lat, $lon)
-// {
-//     $url = 'https://airlabs.co/api/v9/nearby?lat=' . $lat . '&lng=' . $lon . '&distance=20&api_key=abafe3aa-bb01-444a-98b1-4d27266669cc';
-//     $ch = curl_init();
-//     curl_setopt($ch, CURLOPT_URL, $url);
-//     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-//     $iata_code = "";
-
-//     $res = curl_exec($ch);
-//     if ($err = curl_error($ch)) {
-//         console_log('Error getting IATA code - ' . $err);
-//         curl_close($ch);
-//         error_msg();
-//     } else {
-//         $json = json_decode($res);
-//         $json_arr = get_object_vars($json);
-
-//         /* Debug */
-//         // var_dump($json);
-
-//         foreach ($json_arr as $key => $entry) {
-//             if ($key === "response") {
-//                 $res_arr = get_object_vars($entry);
-
-//                 foreach ($res_arr as $_ => $airports) {
-//                     foreach ($airports as $_ => $airport_info) {
-//                         $airport_info_arr = get_object_vars($airport_info);
-//                         foreach ($airport_info_arr as $tag => $value) {
-//                             if ($tag === "iata_code") {
-//                                 $iata_code = $value;
-//                             }
-//                             if ($iata_code !== "") {
-//                                 break;
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     curl_close($ch);
-//     return $iata_code;
-// }
-
 function format_date($date) {
     $real_date = substr($date, 0, 10);
     $real_time = substr($date, 11, 8);

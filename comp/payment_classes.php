@@ -7,37 +7,41 @@
 
 /*
     TODO:
-        Create Order 
-            -> type of payment (instant/hold)
-            -> order_id;
-
-        In construct: Save order_id based on logged in user in WP.
+        Make type and order_id args optional,
+        upon a get_order, parameters should be updated
+        if not set.
 */
-
+// https://pynkiwi.wpcomstaging.com/?page_id=3294
 class Order {
     private $user_id;
+    private $wp_key = 'ord_';
 
     private $pay_type;
     private $order_id;
 
     public function __construct($user_id, $type, $order_id)
     {
-        $this->user_id = $user_id;
+        $this->user_id = strval($user_id);
+        $this->wp_key = $this->wp_key . $this->user_id;
         $this->pay_type = $type;
         $this->order_id = $order_id;
-        add_action('init', array($this, 'add_order'));
     }
 
     public function add_order() {
+        add_action('init', array($this, 'add_order_meta'));
+    }
+
+    public function add_order_meta() {
         $params = array(
+            'ord_id' => $this->order_id,
             'type' => $this->pay_type
         );
-        // distinguish between "instant"/"hold"
-        $meta_id = add_user_meta($this->user_id, ''.$this->order_id.'', $params);
+        console_log('user_id: '.$this->user_id.' order_id: '.$this->order_id);
+        $meta_id = add_user_meta($this->user_id, $this->wp_key, $params);
         if ($meta_id === false) {
             console_log('\t- Unable to save user meta data');
         } else {
-            console_log('\t- User meta saved successfully');
+            console_log('\t- Successfully saved order');
         }
     }
 
@@ -46,8 +50,49 @@ class Order {
     }
 
     public function get_order_meta() {
-        $arr = get_user_meta($this->user_id, ''.$this->order_id.'', true);
-        var_dump($arr);
+        $arr = get_user_meta($this->user_id, $this->wp_key, true);
+        if (count($arr)) {
+            var_dump($arr);
+        } else {
+            console_log('Order array empty');
+        }
+    }
+
+    public function delete_order() {
+        add_action('init', array($this, 'delete_order_meta'));
+    }
+
+    public function delete_order_meta() {
+        $meta = delete_user_meta($this->user_id, $this->wp_key);
+        if ($meta) {
+            console_log('\t- Successfully deleted order');
+        } else {
+            console_log('\t- Not able to delete order');
+        }
+    }
+
+    public function print_html() {
+        $show_order_info = 'function show_'.$this->order_id.'() { let elem = document.getElementById("'.$this->order_id.'_info"); elem.style.display == "none" ? elem.style.display = "flex" : elem.style.display = "none" } ';
+        $init_code = '<script> '. $show_order_info .'document.addEventListener("DOMContentLoaded", function(event) { ';
+        $code = $init_code . 'document.getElementById("order_dash").innerHTML += "'; // "; '
+
+        $order_entry = '<div class=\'order_entry\'>';
+        $order_entry = $order_entry . '<div id=\'order_id\' class=\'dist\'>Order '.$this->order_id.'</div>';
+        if ($this->pay_type === "instant") {
+            $order_entry = $order_entry . '<div id=\'order_typ\' class=\'dist\'>Payment: <span class=\'instant_pay\'>●</span></div>';
+        } else {
+            $order_entry = $order_entry . '<div id=\'order_typ\' class=\'dist\'>Payment: <span class=\'hold_pay\'>●</span></div>';
+        }
+        $order_entry = $order_entry . '<div class=\'show_order dist\' onclick=\'show_'.$this->order_id.'()\'>Show order</div>';
+        $order_entry = $order_entry . '</div>';
+        $code = $code . $order_entry;
+
+        $order_info = '<div id=\''.$this->order_id.'_info\' class=\'order_info\' style=\'display: none;\'>'; 
+        $order_info = $order_info . 'Testing order info'; // TODO!
+        $order_info = $order_info . '</div>';
+        $code = $code . $order_info;
+        $code = $code . '"; }); </script>';
+        echo $code;
     }
 }
 
@@ -141,6 +186,10 @@ class Order_request {
 
             // ---
             $data = $resp_decoded->data;
+            if ($data->id === "") { // TODO: Error handeling
+                alert('Reload page');
+                return;
+            }
             $order = new Order($user_id, $this->type, $data->id);
             // -*-
         }

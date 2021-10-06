@@ -284,6 +284,7 @@ class Single_Offer
 
     public function print_user() {
         echo '<div id=\'user_id\' style=\'display: none;\'>'.$this->user_id.'</div>';
+        //echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("user_id").innerHTML = "'.$this->user_id.'"; }); </script>';
     }
 }
 

@@ -84,7 +84,7 @@ function send_payment() {
     }
     console.log('\t- Total amount: '+total_amount+' ; Offer id: '+offer_id);
     if (pass_list_len+infants_allocated_list_len == max_psgs && infants_not_allocated.length == 0) {
-        let url = new URL("https://pynkiwi.wpcomstaging.com/?page_id=2475");
+        let url = new URL("https://pynkiwi.wpcomstaging.com/?page_id=3294");
         url.searchParams.append("user_id", user_id);
         url.searchParams.append("pay_offer_id", offer_id);
         url.searchParams.append("total_amount", total_amount); // includes currency
@@ -102,7 +102,7 @@ function send_payment() {
         }
 
         window.location.href = url;
-        // https://pynkiwi.wpcomstaging.com/?page_id=2475&pay_offer_id=off_0000ABeUHFGL98sK7wUHKK&p_0_id=pas_0000ABeUEc6Rln6s63bZmF&p_0_name=will+pere&p_0_gender=male&p_0_phone=111+111+111&p_0_email=will%40test.com&p_0_city=porto&p_0_postcode=111-11&p_0_birthday=1996-06-22&p_0_ase_0_id=ase_0000ABeUIFssrtvDBiaDaM&p_0_ase_0_quan=0&p_1_id=pas_0000ABeUEc6Rln6s63bZmG&p_1_name=maria+mei&p_1_gender=female&p_1_phone=111+111+111+11&p_1_email=maria%40test.com&p_1_city=porto&p_1_postcode=111-11&p_1_birthday=1990-07-10&p_1_ase_0_id=ase_0000ABeUIFssrtvDBiaDaM&p_1_ase_0_quan=1
+        // https://pynkiwi.wpcomstaging.com/?page_id=3294&pay_offer_id=off_0000ABeUHFGL98sK7wUHKK&p_0_id=pas_0000ABeUEc6Rln6s63bZmF&p_0_name=will+pere&p_0_gender=male&p_0_phone=111+111+111&p_0_email=will%40test.com&p_0_city=porto&p_0_postcode=111-11&p_0_birthday=1996-06-22&p_0_ase_0_id=ase_0000ABeUIFssrtvDBiaDaM&p_0_ase_0_quan=0&p_1_id=pas_0000ABeUEc6Rln6s63bZmG&p_1_name=maria+mei&p_1_gender=female&p_1_phone=111+111+111+11&p_1_email=maria%40test.com&p_1_city=porto&p_1_postcode=111-11&p_1_birthday=1990-07-10&p_1_ase_0_id=ase_0000ABeUIFssrtvDBiaDaM&p_1_ase_0_quan=1
     } else {
         alert('Missing passenger and/or passenger information!');
     }

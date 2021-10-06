@@ -22,6 +22,7 @@ function add_scripts()
     wp_enqueue_script('plugin-flight-search-calender-scripts', plugin_dir_url(__FILE__) . 'scripts/flight_search_calender.js');
     wp_enqueue_script('plugin-flight-results-scripts', plugin_dir_url(__FILE__) . 'scripts/flight_results_pages.js');
     wp_enqueue_script('plugin-passenger-form-scripts', plugin_dir_url(__FILE__) . 'scripts/passenger_form.js');
+    wp_enqueue_script('plugin-account-order-script', plugin_dir_url(__FILE__) . 'scripts/account_orders.js');
 }
 add_action('wp_enqueue_scripts', 'add_scripts');
 
@@ -69,7 +70,7 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     $geo_arr_to = get_lat_lon($to_text);
     $iata_code_from = get_iata_code($from_text, $geo_arr_from[0], $geo_arr_from[1]);
     $iata_code_to = get_iata_code($to_text, $geo_arr_to[0], $geo_arr_to[1]);
-    
+
     //$iata_code_from = 'OPO';
     //$iata_code_to = 'YYZ'; // MAD
 
@@ -178,17 +179,9 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
  / Send payment via stripe                                              (ISSUE --> #17)
  / Integrate support for later payment (via payment endpoint)           (ISSUE --> #20)
  / Integrate support for canceling order upon creation                  (ISSUE --> #22)
- / Refactor get_iata_code / get_lat_lon                                 (ISSUE --> #23)
+ / Refactor get_iata_code / get_lat_lon                                 (ISSUE --> #23) - Done
  /
- / --> Create Order dashboard, this dashboard
-       should include orders that have received
-       payment and orders on hold.
-
-       Within this dashboard, the user should
-       be able to pay a selected order (on "hold")
-       (and select additional baggage, etc),
-       show order info, email order info and 
-       (later implementation) cancel an order ("hold"/"instant").
+ / --> Setup Order Flow
  /
 */
 /**
@@ -223,10 +216,14 @@ if (isset($_GET['pay_offer_id'])) {
     
     $order_req = new Order_request($pay_type, $services, $selected_offers, $payments, $passengers);
     $order = $order_req->create_order($user_id);
-    console_log('user id: '.$user_id);
+    $order->add_order();
     $order->get_order();
-}
+    $order->delete_order();
+    $order->print_html();
 
+    // console_log('user id: '.$user_id);
+    // $order->get_order();
+}
 
 /**
  * Extracts passenger and
@@ -281,4 +278,26 @@ function get_url_info() {
         $index++;
     }
     return [$passengers, $services];
+}
+
+if (isset($_GET['init_show_orders'])) {
+    add_action('init', 'init_show_orders');
+}
+
+function init_show_orders() {
+    $current_user = wp_get_current_user();
+    $current_user_id = $current_user->ID;
+    header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+        'page_id' => 3294,
+        'show_orders' => 1,
+        'user_id' => $current_user_id
+    )));
+}
+
+if (isset($_GET['show_orders'])) {
+    $user_id = $_GET['user_id'];
+    echo $user_id;
+    // Continue flow, create order from
+    // user_id and get_user_meta to update
+    // Order fields
 }
