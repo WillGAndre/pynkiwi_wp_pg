@@ -5,80 +5,123 @@
     *1 Legal notice - https://help.duffel.com/hc/en-gb/articles/360021056640
 */
 
-/*
-    TODO:
-        Make type and order_id args optional,
-        upon a get_order, parameters should be updated
-        if not set.
-*/
 // https://pynkiwi.wpcomstaging.com/?page_id=3294
-class Order {
+class Orders {
     private $user_id;
-    private $wp_key = 'ord_';
+    private $wp_key = 'ords_';
 
-    private $pay_type;
-    private $order_id;
+    private $order_to_add;
 
-    public function __construct($user_id, $type, $order_id)
+    public function __construct($user_id)
     {
-        $this->user_id = strval($user_id);
+        $this->user_id = $user_id;
         $this->wp_key = $this->wp_key . $this->user_id;
-        $this->pay_type = $type;
-        $this->order_id = $order_id;
     }
 
-    public function add_order() {
+    public function add_order($order) {
+        $this->order_to_add = $order;
         add_action('init', array($this, 'add_order_meta'));
     }
 
     public function add_order_meta() {
-        $params = array(
-            'ord_id' => $this->order_id,
-            'type' => $this->pay_type
+        $orders = array();
+        $new_order = array(
+            'ord_id' => $this->order_to_add->get_order_id(),
+            'type' => $this->order_to_add->get_pay_type()
         );
-        console_log('user_id: '.$this->user_id.' order_id: '.$this->order_id);
-        $meta_id = add_user_meta($this->user_id, $this->wp_key, $params);
-        if ($meta_id === false) {
-            console_log('\t- Unable to save user meta data');
+        $user_meta_arr = get_user_meta($this->user_id, $this->wp_key, true); // saved orders
+        $order_count = count($user_meta_arr);
+        if ($user_meta_arr === false) {
+            console_log('\t- User ID not valid');
+        } else if ($order_count && !($order_count === 1 && $user_meta_arr[0] === "")) {
+            $index = 0;
+            while ($index < $order_count) {
+                array_push($orders, $user_meta_arr[$index]);
+                $index++;
+            }
+            array_push($orders, $new_order);
+            $user_meta_update = update_user_meta($this->user_id, $this->wp_key, $orders);
+            if (is_int($user_meta_update)) {
+                console_log('\t- WP Key doesnt exist');
+            } else if ($user_meta_update === false) {
+                console_log('\t- Update failed');
+            } else {
+                console_log('\t- Update successful');
+            }
         } else {
-            console_log('\t- Successfully saved order');
+            array_push($orders, $new_order);
+            $user_meta_add = add_user_meta($this->user_id, $this->wp_key, $orders);
+            if ($user_meta_add === false) {
+                console_log('\t- Failed to add order');
+            } else {
+                console_log('\t- Added new order successfully');
+            }
+        }
+        // Print Orders
+        $index = 0;
+        while ($index < count($orders)) {
+            $order_arr = $orders[$index];
+            $order = new Order($order_arr['type'], $order_arr['ord_id']);
+            $order->print_html();
+            $index++;
         }
     }
 
-    public function get_order() {
-        add_action('init', array($this, 'get_order_meta'));
+    public function delete_orders() {
+        add_action('init', array($this, 'delete_orders_meta'));
     }
 
-    public function get_order_meta() {
+    public function delete_orders_meta() {
+        $meta = delete_user_meta($this->user_id, $this->wp_key);
+        if ($meta) {
+            console_log('\t- Successfully deleted order(s)');
+        } else {
+            console_log('\t- Not able to delete order(s)');
+        }
+    }
+
+    public function get_orders() {
+        add_action('init', array($this, 'get_orders_meta'));
+    }
+
+    public function get_orders_meta() {
         $arr = get_user_meta($this->user_id, $this->wp_key, true);
         if (count($arr)) {
             var_dump($arr);
         } else {
-            console_log('Order array empty');
+            console_log('No orders found');
         }
+        return;
+    }
+}
+
+
+class Order {
+    private $pay_type;
+    private $order_id;
+
+    public function __construct($type, $order_id)
+    {
+        $this->pay_type = $type;
+        $this->order_id = $order_id;
     }
 
-    public function delete_order() {
-        add_action('init', array($this, 'delete_order_meta'));
+    public function get_pay_type() {
+        return $this->pay_type;
     }
 
-    public function delete_order_meta() {
-        $meta = delete_user_meta($this->user_id, $this->wp_key);
-        if ($meta) {
-            console_log('\t- Successfully deleted order');
-        } else {
-            console_log('\t- Not able to delete order');
-        }
+    public function get_order_id() {
+        return $this->order_id;
     }
 
     public function print_html() {
         $show_order_info = 'function show_'.$this->order_id.'() { let elem = document.getElementById("'.$this->order_id.'_info"); elem.style.display == "none" ? elem.style.display = "flex" : elem.style.display = "none" } ';
         $init_code = '<script> '. $show_order_info .'document.addEventListener("DOMContentLoaded", function(event) { ';
-        $code = $init_code . 'document.getElementById("order_dash").innerHTML += "'; // "; '
+        $code = $init_code . 'document.getElementById("order_dash").innerHTML += "'; 
 
         $order_entry = '<div class=\'order_entry\'>';
         $order_entry = $order_entry . '<div id=\'order_id\' class=\'dist\'>Order '.$this->order_id.'</div>';
-        if ($this->pay_type === "instant") {
+        if ($this->type === "instant") {
             $order_entry = $order_entry . '<div id=\'order_typ\' class=\'dist\'>Payment: <span class=\'instant_pay\'>●</span></div>';
         } else {
             $order_entry = $order_entry . '<div id=\'order_typ\' class=\'dist\'>Payment: <span class=\'hold_pay\'>●</span></div>';
@@ -93,6 +136,10 @@ class Order {
         $code = $code . $order_info;
         $code = $code . '"; }); </script>';
         echo $code;
+    }
+
+    public function debug() {
+        console_log('order_id: '.$this->order_id.' type: '.$this->pay_type);
     }
 }
 
@@ -152,7 +199,7 @@ class Order_request {
         }
     }
 
-    public function create_order($user_id) {
+    public function create_order() {
         $order = 0;
         $url = "https://api.duffel.com/air/orders";
         $header = array(
@@ -190,7 +237,7 @@ class Order_request {
                 alert('Reload page');
                 return;
             }
-            $order = new Order($user_id, $this->type, $data->id);
+            $order = new Order($this->type, $data->id);
             // -*-
         }
         curl_close($ch);

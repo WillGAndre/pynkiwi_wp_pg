@@ -215,14 +215,11 @@ if (isset($_GET['pay_offer_id'])) {
     array_push($selected_offers, $offer_id);
     
     $order_req = new Order_request($pay_type, $services, $selected_offers, $payments, $passengers);
-    $order = $order_req->create_order($user_id);
-    $order->add_order();
-    $order->get_order();
-    $order->delete_order();
-    $order->print_html();
-
-    // console_log('user id: '.$user_id);
-    // $order->get_order();
+    $order = $order_req->create_order();
+    $orders = new Orders($user_id);
+    $orders->add_order($order);
+    $orders->get_orders();
+    $orders->delete_orders();
 }
 
 /**
@@ -280,6 +277,10 @@ function get_url_info() {
     return [$passengers, $services];
 }
 
+/**
+ * Triggers init script for
+ * showing orders.
+ */
 if (isset($_GET['init_show_orders'])) {
     add_action('init', 'init_show_orders');
 }
@@ -296,8 +297,7 @@ function init_show_orders() {
 
 if (isset($_GET['show_orders'])) {
     $user_id = $_GET['user_id'];
-    echo $user_id;
-    // Continue flow, create order from
-    // user_id and get_user_meta to update
-    // Order fields
+    $orders = new Orders($user_id);
+    $orders->get_orders();
+    // TODO: get_orders() and print_orders()
 }
