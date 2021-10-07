@@ -60,8 +60,8 @@ class Orders {
         // Print Orders
         $index = 0;
         while ($index < count($orders)) {
-            $order_arr = $orders[$index];
-            $order = new Order($order_arr['type'], $order_arr['ord_id']);
+            $order_info = $orders[$index];
+            $order = new Order($order_info['type'], $order_info['ord_id']);
             $order->print_html();
             $index++;
         }
@@ -80,13 +80,35 @@ class Orders {
         }
     }
 
-    public function get_orders() {
-        add_action('init', array($this, 'get_orders_meta'));
+    public function show_orders() {
+        add_action('init', array($this, 'show_orders_meta'));
     }
 
-    public function get_orders_meta() {
+    public function show_orders_meta() {
         $arr = get_user_meta($this->user_id, $this->wp_key, true);
-        if (count($arr)) {
+        $order_count = count($arr);
+        if ($order_count && !($order_count === 1 && $arr[0] === "")) {
+            $index = 0;
+            while ($index < $order_count) {
+                $order_info = $arr[$index];
+                $order = new Order($order_info['type'], $order_info['ord_id']);
+                $order->print_html();
+                $index++;
+            }
+        } else {
+            console_log('No orders found');
+        }
+        return;
+    }
+
+    public function debug_get_orders() {
+        add_action('init', array($this, 'debug_get_orders_meta'));
+    }
+
+    public function debug_get_orders_meta() {
+        $arr = get_user_meta($this->user_id, $this->wp_key, true);
+        $order_count = count($arr);
+        if ($order_count && !($order_count === 1 && $arr[0] === "")) {
             var_dump($arr);
         } else {
             console_log('No orders found');
@@ -173,6 +195,14 @@ class Order_request {
         $this->passengers = $passengers;
     }
 
+    /**
+     * Function responsible for 
+     * returning the POST data used
+     * to send when requesting an Order.
+     * 
+     * POST data varies depending on
+     * the type of payment.
+     */
     public function get_post_data() {
         if ($this->type === "instant") {
             return json_encode(
@@ -229,16 +259,14 @@ class Order_request {
             $resp_decoded = json_decode($response);
             
             // debug
-            //var_dump($resp_decoded);
+            // var_dump($resp_decoded);
 
-            // ---
             $data = $resp_decoded->data;
             if ($data->id === "") { // TODO: Error handeling
                 alert('Reload page');
                 return;
             }
             $order = new Order($this->type, $data->id);
-            // -*-
         }
         curl_close($ch);
         return $order;

@@ -220,7 +220,9 @@ if (isset($_GET['pay_offer_id'])) {
     $order = $order_req->create_order();
     $orders = new Orders($user_id);
     $orders->add_order($order);
-    $orders->get_orders();
+    $orders->debug_get_orders();
+    
+    // imp
     $orders->delete_orders();
 }
 
@@ -300,6 +302,8 @@ function init_show_orders() {
 if (isset($_GET['show_orders'])) {
     $user_id = $_GET['user_id'];
     $orders = new Orders($user_id);
-    $orders->get_orders();
-    // TODO: get_orders() and print_orders()
+    $orders->show_orders();
+    
+    // imp
+    // $orders->delete_orders();
 }
