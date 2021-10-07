@@ -27,7 +27,9 @@ function add_scripts()
 add_action('wp_enqueue_scripts', 'add_scripts');
 
 // Auxilary Functions 
-include_once(plugin_dir_path(__FILE__) . 'comp/aux.php');
+include_once(plugin_dir_path(__FILE__) . 'comp/aux/flight_search_aux.php');
+include_once(plugin_dir_path(__FILE__) . 'comp/aux/current_offer_aux.php');
+include_once(plugin_dir_path(__FILE__) . 'comp/aux/aux.php');
 // Classes - Slices, Passengers, Offer Request, Offers
 include_once(plugin_dir_path(__FILE__) . 'comp/payment_classes.php');
 include_once(plugin_dir_path(__FILE__) . 'comp/current_offer_classes.php');
