@@ -2,6 +2,61 @@
 // Copyright 2021 - PYNKIWI
 
 // ###### Auxilary ######
+
+class CURL_REQUEST {
+    public $type;
+    public $url;
+    public $header;
+    public $data; // array
+
+    public function __construct($type, $url, $data)
+    {
+        $this->type = $type;
+        $this->url = $url;
+        if ($type === "POST") {
+            $this->set_duffel_payload($data);
+        }
+    }
+
+    public function set_duffel_header() {
+        $this->header = array(
+            'Accept-Encoding: gzip',
+            'Accept: application/json',
+            'Content-Type: application/json',
+            'Duffel-Version: beta',
+            'Authorization: Bearer duffel_test_vDBYacGBACsUsAYIRATuTQXieoIsb_TxLjcM4hAmUTl'
+        );
+    }
+
+    public function set_duffel_payload($data) {
+        $this->data = json_encode(
+            array(
+                'data' => $data
+            )
+        );
+    }
+
+    public function send_duffel_request() {
+        $resp_dec = "";
+        $this->set_duffel_header();
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $this->url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $this->type);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $this->data);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $this->header);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $res = curl_exec($ch);
+        if ($err = curl_error($ch)) {
+            console_log('[*] Error sending request to Duffel - ' . $err);
+        } else {
+            $response = gzdecode($res);
+            $resp_dec = json_decode($response);
+        }
+        curl_close($ch);
+        return $resp_dec;
+    }
+}
+
 function debug_log($iata_code_from, $iata_code_to, $first_date, $second_date, $slices_list, $passengers_list)
 {
     console_log($iata_code_from . ' , ' . $iata_code_to);

@@ -223,7 +223,7 @@ if (isset($_GET['pay_offer_id'])) {
     $orders->debug_get_orders();
     
     // imp
-    $orders->delete_orders();
+    //$orders->delete_orders();
 }
 
 /**
@@ -305,5 +305,16 @@ if (isset($_GET['show_orders'])) {
     $orders->show_orders();
     
     // imp
-    // $orders->delete_orders();
+    $orders->delete_orders();
+}
+
+// 1 --> cancel order | 2 --> pay for order
+if (isset($_GET['action_type'])) {
+    $action_type = $_GET['action_type'];
+    $order_id = $_GET['order_id'];
+    
+    if ($action_type === "1") {
+        console_log('order_id: '.$order_id);
+        cancel_order($order_id);
+    }
 }

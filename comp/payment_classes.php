@@ -6,6 +6,25 @@
 */
 
 // https://pynkiwi.wpcomstaging.com/?page_id=3294
+
+/**
+ * TODO:
+ *  --> Order cancelation / payment
+ *  --> Refactor curl execs into CURL REQUEST class 
+ */
+
+function cancel_order($order_id) {
+    $data = array(
+        'order_id' => $order_id
+    );
+    $cancel_request = new CURL_REQUEST('POST', "https://api.duffel.com/air/order_cancellations", $data);
+    $data = $cancel_request->send_duffel_request();
+    
+    // TODO
+    var_dump($data);
+}
+
+
 class Orders {
     private $user_id;
     private $wp_key = 'ords_';
@@ -137,20 +156,30 @@ class Order {
     }
 
     public function print_html() {
-        $show_order_info = 'function show_'.$this->order_id.'() { let elem = document.getElementById("'.$this->order_id.'_info"); elem.style.display == "none" ? elem.style.display = "flex" : elem.style.display = "none" } ';
-        $init_code = '<script> '. $show_order_info .'document.addEventListener("DOMContentLoaded", function(event) { ';
+        $script = $this->print_order_info() . $this->print_cancel_order_msg_script() . $this->print_cancel_order_script();
+        $init_code = '<script> '. $script .'document.addEventListener("DOMContentLoaded", function(event) { ';
         $code = $init_code . 'document.getElementById("order_dash").innerHTML += "'; 
 
         $order_entry = '<div class=\'order_entry\'>';
-        $order_entry = $order_entry . '<div id=\'order_id\' class=\'dist\'>Order '.$this->order_id.'</div>';
-        if ($this->type === "instant") {
+        $order_entry = $order_entry . '<div id=\'order_id\' class=\'dist\'>Order '.$this->print_order_id().'</div>';
+        $order_entry = $order_entry . '<input id=\'hidden_order_id\' type=\'hidden\' value=\''.$this->order_id.'\'>';
+        if ($this->pay_type === "instant") {
             $order_entry = $order_entry . '<div id=\'order_typ\' class=\'dist\'>Payment: <span class=\'instant_pay\'>●</span></div>';
         } else {
             $order_entry = $order_entry . '<div id=\'order_typ\' class=\'dist\'>Payment: <span class=\'hold_pay\'>●</span></div>';
+            $order_entry = $order_entry . '<div id=\'order_pay\' class=\'dist\'>Pay Order</div>';
         }
+        $order_entry = $order_entry . '<div id=\'order_cancel\' class=\'dist\' onclick=\'show_cancel_'.$this->order_id.'()\'>Cancel Order</div>';
         $order_entry = $order_entry . '<div class=\'show_order dist\' onclick=\'show_'.$this->order_id.'()\'>Show order</div>';
         $order_entry = $order_entry . '</div>';
         $code = $code . $order_entry;
+
+        $order_cancel_msg = '<div id=\''.$this->order_id.'_cancel\' class=\'cancel_order_msg\' style=\'display: none;\'>';
+        $order_cancel_msg = $order_cancel_msg . 'Are you sure you wan\'t to cancel your order?';
+        $order_cancel_msg = $order_cancel_msg . '<div class=\'opts\'>';
+        $order_cancel_msg = $order_cancel_msg . '<div onclick=\'cancel_'.$this->order_id.'()\' class=\'cancel_order_bt dist\'>Yes</div>';
+        $order_cancel_msg = $order_cancel_msg . '</div></div>';
+        $code = $code . $order_cancel_msg;
 
         $order_info = '<div id=\''.$this->order_id.'_info\' class=\'order_info\' style=\'display: none;\'>'; 
         $order_info = $order_info . 'Testing order info'; // TODO!
@@ -158,6 +187,33 @@ class Order {
         $code = $code . $order_info;
         $code = $code . '"; }); </script>';
         echo $code;
+    }
+
+    public function print_order_id() {
+        return '0000_' . substr($this->order_id, count($this->order_id)-4, 3);
+    }
+
+    private function print_cancel_order_msg_script() {
+        return 'function show_cancel_'.$this->order_id.'() {
+            let elem = document.getElementById("'.$this->order_id.'_cancel");
+            elem.style.display == "none" ? elem.style.display = "inline-block" : elem.style.display = "none"
+        } ';
+    }
+
+    private function print_cancel_order_script() {
+        return 'function cancel_'.$this->order_id.'() {
+            let url = new URL(\'https://pynkiwi.wpcomstaging.com/?page_id=3294\');
+            url.searchParams.append(\'action_type\', \'1\');
+            url.searchParams.append(\'order_id\', \''.$this->order_id.'\');
+            window.location.href = url;
+        } ' ;
+    }
+
+    private function print_order_info() {
+        return 'function show_'.$this->order_id.'() { 
+            let elem = document.getElementById("'.$this->order_id.'_info"); 
+            elem.style.display == "none" ? elem.style.display = "flex" : elem.style.display = "none" 
+        } ';
     }
 
     public function debug() {
