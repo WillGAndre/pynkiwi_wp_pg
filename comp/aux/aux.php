@@ -3,6 +3,16 @@
 
 // ###### Auxilary ######
 
+/**
+ * Class used to send
+ * curl request to Duffel,
+ * header and body vary depending
+ * on the type of request.
+ * 
+ * Possible types atm:
+ *  POST, GET, CANCEL_ORDER (POST
+ *  request with no payload)
+ */
 class CURL_REQUEST {
     public $type;
     public $url;
@@ -28,6 +38,15 @@ class CURL_REQUEST {
         );
     }
 
+    public function set_cancel_order_duffel_header() {
+        $this->header = array(
+            'Accept-Encoding: gzip',
+            'Accept: application/json',
+            'Duffel-Version: beta',
+            'Authorization: Bearer duffel_test_vDBYacGBACsUsAYIRATuTQXieoIsb_TxLjcM4hAmUTl'
+        );
+    }
+
     public function set_duffel_payload($data) {
         $this->data = json_encode(
             array(
@@ -38,7 +57,12 @@ class CURL_REQUEST {
 
     public function send_duffel_request() {
         $resp_dec = "";
-        $this->set_duffel_header();
+        if ($this->type === "CANCEL_ORDER") {
+            $this->type = "POST";
+            $this->set_cancel_order_duffel_header();
+        } else {
+            $this->set_duffel_header();
+        }
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $this->url);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $this->type);

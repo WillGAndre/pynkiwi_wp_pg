@@ -394,14 +394,19 @@ class Offer_request
      */
     public function get_post_data()
     {
-        $post_data = array(
-            'data' => array(
-                'slices' => $this->slices,
-                'passengers' => $this->passengers,
-                'cabin_class' => $this->cabin_class
-            )
+        // $post_data = array(
+        //     'data' => array(
+        //         'slices' => $this->slices,
+        //         'passengers' => $this->passengers,
+        //         'cabin_class' => $this->cabin_class
+        //     )
+        // );
+        // return json_encode($post_data);
+        return array(
+            'slices' => $this->slices,
+            'passengers' => $this->passengers,
+            'cabin_class' => $this->cabin_class
         );
-        return json_encode($post_data);
     }
 
     public function get_offer_request_id() {
@@ -416,37 +421,11 @@ class Offer_request
      */
     public function get_offer_request()
     {
-        $url = "https://api.duffel.com/air/offer_requests?return_offers=true";
-        $header = array(
-            'Accept-Encoding: gzip',
-            'Accept: application/json',
-            'Content-Type: application/json',
-            'Duffel-Version: beta',
-            'Authorization: Bearer duffel_test_vDBYacGBACsUsAYIRATuTQXieoIsb_TxLjcM4hAmUTl'
-        );
-        $data = $this->get_post_data();
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-        $res = curl_exec($ch);
-        if ($err = curl_error($ch)) {
-            console_log('[*] Error getting Duffel offer request - ' . $err);
-            curl_close($ch);
-            error_msg();
-        } else {
-            console_log('[*] Offer request successfully created');
-            $response = gzdecode($res);
-            $resp_decoded = json_decode($response);
-            foreach ($resp_decoded as $_ => $data) {
-                return $this->walk_data($data);
-            }
+        $req = new CURL_REQUEST('POST', 'https://api.duffel.com/air/offer_requests?return_offers=true', $this->get_post_data());
+        $resp_decoded = $req->send_duffel_request();
+        foreach ($resp_decoded as $_ => $data) {
+            return $this->walk_data($data);
         }
-        curl_close($ch);
     }
 
     /**

@@ -9,22 +9,72 @@
 
 /**
  * TODO:
- *  --> Order cancelation / payment
- *  --> Refactor curl execs into CURL REQUEST class 
+ *  --> Order payment
+ *  --> Order cancelation (add Stripe refund to user)
  */
 
+/**
+ * 
+ * Function used to cancel a
+ * specific order (given an
+ * order_id). Two requests are
+ * sent to Duffel, a order cancelation
+ * request and a order cancelation 
+ * confirm request.
+ */
 function cancel_order($order_id) {
+    $order_canceled_flag = 0;
     $data = array(
         'order_id' => $order_id
     );
     $cancel_request = new CURL_REQUEST('POST', "https://api.duffel.com/air/order_cancellations", $data);
-    $data = $cancel_request->send_duffel_request();
-    
-    // TODO
-    var_dump($data);
+    $resp_data = $cancel_request->send_duffel_request();
+
+    if (count($resp_data->data) && $resp_data->data->order_id == $order_id) {
+        $order_cancel_id = $resp_data->data->id;
+        // Refund via stripe
+        $refund_amount = $resp_data->data->refund_amount;
+        $refund_currency = $resp_data->data->refund_currency;
+        $expires_at = $resp_data->data->expires_at;
+        $created_at = $resp_data->data->created_at;
+        $order_cancel_ttl = get_offer_ttl($created_at, $expires_at);
+        console_log('Order cancel ttl: '.$order_cancel_ttl);
+
+        $confirm_cancel_req = new CURL_REQUEST('CANCEL_ORDER', 'https://api.duffel.com/air/order_cancellations/'.$order_cancel_id.'/actions/confirm', "");
+        $order_cancel_resp = $confirm_cancel_req->send_duffel_request();
+        $order_cancel_confirmed_at = $order_cancel_resp->data->confirmed_at;
+        if ($order_cancel_confirmed_at !== NULL) {
+            console_log('\t- Order {'.$order_id.'} canceled successfully');
+            $order_canceled_flag++;
+        }
+        // debug
+        // var_dump($order_cancel_resp);
+    }
+    // debug
+    // var_dump($resp_data);
+    return $order_canceled_flag;
 }
 
-
+/** ###### Orders ######
+ * 
+ * Orders class, used to add,
+ * update, get and remove all
+ * or a specific order from 
+ * the user meta data saved
+ * in WP.
+ * 
+ * Schema:
+ *  [wp_key] -> 
+ *      array(
+ *          [0] => Order#1,
+ *          [1] => Order#2,
+ *               (...)
+ *      )
+ * 
+ * Note: Each interaction with
+ * the user meta must be done
+ * during the 'init' tag.
+ */
 class Orders {
     private $user_id;
     private $wp_key = 'ords_';
@@ -86,6 +136,40 @@ class Orders {
         }
     }
 
+    /**
+     * Used for canceling a specific order,
+     * there is no 'init' handler (in this file) 
+     * for this function because it is called
+     * from index.php.
+     */
+    public function delete_order_meta($order_id) {
+        $flag = 0;
+        $user_meta_arr = get_user_meta($this->user_id, $this->wp_key);
+        $updated_orders = array();
+        $orders = $user_meta_arr[0];
+        $order_count = count($orders);
+        $index = 0;
+        
+        while($index < $order_count) {
+            $order = $orders[$index];
+            if ($order['ord_id'] === $order_id) {
+                $flag++;
+            } else {
+                array_push($updated_orders, $order);
+            }
+            $index++;
+        }
+
+        $resp = update_user_meta($this->user_id, $this->wp_key, $updated_orders);
+        if (is_int($resp)) {
+            console_log('\t- User meta Key doesnt exist');
+        } else if ($resp === true && $flag === 1) {
+            console_log('\t- Order successfully deleted');
+        } else {
+            console_log('\t- Failed to delete order');
+        }
+    }
+
     public function delete_orders() {
         add_action('init', array($this, 'delete_orders_meta'));
     }
@@ -137,6 +221,13 @@ class Orders {
 }
 
 
+/** ###### Order ######
+ * 
+ * Order class used to
+ * save relevant Order
+ * information and print
+ * (echo) html and js code.
+ */
 class Order {
     private $pay_type;
     private $order_id;
@@ -261,70 +352,33 @@ class Order_request {
      */
     public function get_post_data() {
         if ($this->type === "instant") {
-            return json_encode(
-                array(
-                    'data' => array(
-                        'type' => $this->type,
-                        'services' => $this->services,
-                        'selected_offers' => $this->selected_offers,
-                        'payments' => $this->payments,
-                        'passengers' => $this->passengers
-                    )
-                )
+            return array(
+                'type' => $this->type,
+                'services' => $this->services,
+                'selected_offers' => $this->selected_offers,
+                'payments' => $this->payments,
+                'passengers' => $this->passengers
             );
         } else { // "hold"
-            return json_encode(
-                array(
-                    'data' => array(
-                        'type' => $this->type,
-                        'selected_offers' => $this->selected_offers,
-                        'passengers' => $this->passengers
-                    )
-                )
+            return array(
+                'type' => $this->type,
+                'selected_offers' => $this->selected_offers,
+                'passengers' => $this->passengers
             );
         }
     }
 
     public function create_order() {
         $order = 0;
-        $url = "https://api.duffel.com/air/orders";
-        $header = array(
-            'Accept-Encoding: gzip',
-            'Accept: application/json',
-            'Content-Type: application/json',
-            'Duffel-Version: beta',
-            'Authorization: Bearer duffel_test_vDBYacGBACsUsAYIRATuTQXieoIsb_TxLjcM4hAmUTl'
-        );
-        $data = $this->get_post_data();
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-        $res = curl_exec($ch);
-        if ($err = curl_error($ch)) {
-            console_log('[*] Error creating order - ' . $err);
-            curl_close($ch);
-            error_msg();
-        } else {
-            console_log('[*] Order successfully created');
-            $response = gzdecode($res);
-            $resp_decoded = json_decode($response);
+        $req = new CURL_REQUEST('POST', 'https://api.duffel.com/air/orders', $this->get_post_data());
+        $resp_decoded = $req->send_duffel_request();
+        $data = $resp_decoded->data;
             
-            // debug
-            // var_dump($resp_decoded);
-
-            $data = $resp_decoded->data;
-            if ($data->id === "") { // TODO: Error handeling
-                alert('Reload page');
-                return;
-            }
-            $order = new Order($this->type, $data->id);
+        if ($data->id === "") { // TODO: Error handeling
+            alert('Reload page');
+            return;
         }
-        curl_close($ch);
+        $order = new Order($this->type, $data->id);
         return $order;
     }
 }

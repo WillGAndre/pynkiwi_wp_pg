@@ -180,11 +180,14 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
 /* TODO: 
  / Send payment via stripe                                              (ISSUE --> #17)
  / Integrate support for later payment (via payment endpoint)           (ISSUE --> #20)
- / Integrate support for canceling order upon creation                  (ISSUE --> #22)
+ / Integrate support for canceling order upon creation                  (ISSUE --> #22) - Partially Done
  / Refactor get_iata_code / get_lat_lon                                 (ISSUE --> #23) - Done
  /
- / --> Setup Order Flow
- /
+ / FILE: payment_classes.php
+ /  \
+ /   TODO:
+ /    --> Order payment ("instant" --> Integrate Stripe / "hold" --> Integrate Duffel & Stripe)
+ /    --> Order cancelation (add Stripe refund to user)
 */
 /**
  * On current offer payment click,
@@ -220,9 +223,10 @@ if (isset($_GET['pay_offer_id'])) {
     $order = $order_req->create_order();
     $orders = new Orders($user_id);
     $orders->add_order($order);
-    $orders->debug_get_orders();
     
+    // debug
     // imp
+    $orders->debug_get_orders();
     //$orders->delete_orders();
 }
 
@@ -304,17 +308,33 @@ if (isset($_GET['show_orders'])) {
     $orders = new Orders($user_id);
     $orders->show_orders();
     
+    // debug
     // imp
     $orders->delete_orders();
 }
 
-// 1 --> cancel order | 2 --> pay for order
+/**
+ * Action type for available orders,
+ * (1) cancel the selected order,
+ * (2) pay the selected order (TODO).
+ */
 if (isset($_GET['action_type'])) {
     $action_type = $_GET['action_type'];
     $order_id = $_GET['order_id'];
     
     if ($action_type === "1") {
-        console_log('order_id: '.$order_id);
-        cancel_order($order_id);
+        $flag = cancel_order($order_id);
+        if ($flag) {
+            add_action(
+                'init',
+                function() use ($order_id) {
+                    $current_user = wp_get_current_user();
+                    $user_id = $current_user->ID;
+                    $orders = new Orders($user_id);
+                    $orders->delete_order_meta($order_id);
+                }
+            );
+        }
     }
 }
+

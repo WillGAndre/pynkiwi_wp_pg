@@ -27,40 +27,19 @@ class Single_Offer
 
     public function get_single_offer()
     {
-        $url = "https://api.duffel.com/air/offers/" . $this->offer_id . "?return_available_services=true";
-        $header = array(
-            'Accept-Encoding: gzip',
-            'Accept: application/json',
-            'Content-Type: application/json',
-            'Duffel-Version: beta',
-            'Authorization: Bearer duffel_test_vDBYacGBACsUsAYIRATuTQXieoIsb_TxLjcM4hAmUTl'
-        );
+        $req = new CURL_REQUEST('GET', 'https://api.duffel.com/air/offers/'.$this->offer_id.'?return_available_services=true', '');
+        $resp_decoded = $req->send_duffel_request();
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        // debug 
+        // var_dump($resp_decoded);
 
-        $res = curl_exec($ch);
-        if ($err = curl_error($ch)) {
-            console_log('[*] Error getting single offer - ' + $err);
+        // TODO!
+        if ($resp_decoded->meta->status === 422 && $resp_decoded->errors[0]->title === "Requested offer is no longer available") {
+            alert('Please reload your page');
+            exit();
         } else {
-            console_log('[*] Updated Offer');
-            $response = gzdecode($res);
-            $resp_decoded = json_decode($response);
-
-            // debug 
-            // var_dump($resp_decoded);
-
-            // TODO!
-            if ($resp_decoded->meta->status === 422 && $resp_decoded->errors[0]->title === "Requested offer is no longer available") {
-                alert('Please reload your page');
-                exit();
-            } else {
-                $data = $resp_decoded->data;
-                $this->walk_data($data);
-            }
+            $data = $resp_decoded->data;
+            $this->walk_data($data);
         }
     }
 
