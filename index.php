@@ -1,5 +1,9 @@
 <?php
-// Copyright 2021 - PYNKIWI
+/*
+ * Created on Sun Oct 10 2021
+ *
+ * Copyright (c) 2021 PYNKIWI
+ */
 /**
  * Plugin Name: Pynkiwi flights plugin
  * Plugin URI: -
@@ -163,8 +167,10 @@ if (isset($_GET['up_offer_id'])) {
     show_current_offer($offer_id);
     $single_offer = new Single_Offer($offer_id, $user_id);
     $single_offer->get_single_offer();
+    // ---
     $single_offer->print_single_offer_html();
     $single_offer->print_single_offer_opts_html();
+    // ---
     $single_offer->print_user();
 }
 
@@ -173,6 +179,10 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
     echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("main_dash").style.display = "block"; '.$offer_id_html.' }); </script>';
 }
 
+/*
+    Passenger form html in WP
+     1- Run js code
+*/
 
 //                  --- *** ---
 
@@ -316,7 +326,7 @@ if (isset($_GET['show_orders'])) {
 /**
  * Action type for available orders,
  * (1) cancel the selected order,
- * (2) pay the selected order (TODO).
+ * (2) pay the selected order.
  */
 if (isset($_GET['action_type'])) {
     $action_type = $_GET['action_type'];
@@ -335,6 +345,17 @@ if (isset($_GET['action_type'])) {
                 }
             );
         }
+    } else if ($action_type === "2") {
+        $info = get_updated_order($order_id);
+        $total_amount = explode(' ', $info[0]);
+        $data = new stdClass();
+        $payment = new stdClass();
+        $payment->type = "balance";
+        $payment->currency = $total_amount[1];
+        $payment->amount = $total_amount[0];
+        $data->payment = $payment;
+        $data->order_id = $order_id;
+        create_payment($order_id, $data);
     }
 }
 

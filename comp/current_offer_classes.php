@@ -489,4 +489,146 @@ class Offer_Payment_Info
     }
 }
 
+/*
+    HTML current_offer:
+
+<div id="pass_ids" style="display: none"></div>
+<div id="main_dash" style="display: none">
+  <div class="offer_label_lft center">
+    <div class="label">CURRENT OFFER</div>
+  </div>
+  <div id="current_offer">
+    <div id="legal_notice" class="block upper">
+      <div class="title big" style="margin-top: -0.5em;">Legal Notice:</div>
+      <div class="text imp">Your flight booking will be bound by the fare rules and Conditions of Carriage of the airline(s). The information you provide will be sent to the airline so they can process your booking.</div>
+    </div>
+    <div id="selected_offer" class="block">
+     <div class="title big">Offer Info:</div>
+      <div id="flight_info">
+        <div class="flight_info_content">
+         <div class="entry top">
+          <div class="title">Source:</div>
+          <div id="entry-source" class="text imp"></div>
+         </div>
+         <div class="entry top">
+          <div class="title">Destination:</div>
+          <div id="entry-dest" class="text imp"></div>
+         </div>
+         <div class="entry top">
+          <div class="title">Dep Date:</div>
+          <div id="entry-dep_date" class="text imp"></div>
+         </div>
+         <div class="entry top">
+          <div class="title">Arr Date:</div>
+          <div id="entry-arr_date" class="text imp"></div>
+         </div>
+         <div class="entry top">
+          <div class="title">Flight time:</div>
+          <div id="entry-flight_time" class="text imp"></div>
+         </div>
+        </div>
+      </div>
+    </div>
+    <div>
+          <div id="sub_flights" class="title big" style="text-decoration: underline; cursor: pointer; text-align: center;">SHOW SUB FLIGHTS</div>
+    </div>
+    <div id="offer_opt" class="block">
+      <div class="title big">Offer Options:</div>
+      <div id="offer_opt_content">
+        <div id="entry-payment" class="entry opt">
+          <div class="title">Instant Payment:</div>
+        </div>
+        <div id="entry-ref" class="entry opt">
+          <div class="title">Refunds:</div>
+          <div class="title">PRICE:</div>
+          <div id="entry-ref_price" class="text imp"></div>
+        </div>
+        <div id="entry-chg" class="entry opt">
+          <div class="title">Changes:</div>
+          <div class="title">PRICE:</div>
+          <div id="entry-chg_price" class="text imp"></div>
+        </div>
+        <div id="entry-bag" class="entry opt">
+          <div class="title">Current bags:</div>
+          <div id="curr-bags_text" class="text imp"></div>
+        </div>
+        <div id="entry-add-bag" class="entry opt">
+          <div class="title">Additional bags:</div>
+          <div id="add-bags_text" class="text imp">Not available</div>
+        </div>
+        <div class="entry opt">
+          <div class="title">Seat selection:</div>
+          <div class="text imp">Not available</div>
+        </div>
+      </div>
+    </div>
+<div id="pay_later_discl" class="smaller" style="color: red;">*1 - By selecting to pay later, you won't be able to book additional services.</div>
+    <div id="pass_info" class="block">
+      <div class="title big">Passenger Info:</div>
+      <div class="text imp">Please fill out the following form for each passenger, except infants.</div>
+      <div id="pass_info_content">
+       <div class="leftcontact">
+         <div class="entry top p-info">
+           <p class="p-title">Title <span>*</span></p>
+           <input id="entry-title" class="input-text short" type="text" name="title">
+         </div>
+         <div class="entry top p-info">
+           <p class="p-title">First and last name <span>*</span></p>
+           <input id="entry-name" class="input-text" type="text" name="name">
+         </div>
+         <div class="entry top p-info">
+           <p class="p-title">Gender <span>*</span></p>	
+           <select id="entry-gender" class="input-text" name="gender">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+           </select>
+         </div>
+         <div class="entry top p-info">
+           <p class="p-title">Birthday <span>*</span></p>
+           <input id="entry-bday" class="input-text" type="date" name="birthday" onchange="check_age()">
+         </div>
+         <div class="entry top p-info">
+           <p class="p-title">E-mail <span>*</span></p>	
+           <input id="entry-mail" class="input-text" type="email" name="email">
+         </div>
+       </div>
+       <div id="pass_disclaimer" class="rightcontact">
+         <div class="entry top">
+          <p class="p-title">Country <span>*</span></p>
+          <input id="entry-country" class="input-text" type="text" name="country">
+         </div>
+         <div class="entry top">
+          <p class="p-title">Phone number <span>*</span></p>	
+          <input id="entry-phone" class="input-text" type="text" name="phone">
+         </div>
+         <div id="passport-info" class="entry top">
+           <p class="p-title">Passport id <span>*</span></p>
+           <input id="entry-doc_id" class="input-text" type="text" name="doc_id">
+           <p class="p-title">Passport expiration date <span>*</span></p>
+           <input id="entry-doc_exp_date" class="input-text" type="date" name="doc_exp_date">
+         </div>
+         <div id="services" class="entry top">
+          <p id="bags-title" class="p-title">Additional Baggage:</p>
+          <div id="add_baggage" class="segments_available">
+           <div id="seg_ids" style="display: none;"></div>
+           <!-- Add input for baggage here -->
+          </div>
+         </div>
+      </div>  
+      <div class="rightcontact">
+        <div id="pass_count" class="form_pass normal">0/1 Passengers</div>
+        <div class="form_pass" onclick="add_passenger()">Next Passenger</div>
+        <div class="form_pass" onclick="refresh()">Refresh</div>
+        <div id="error-log" class="error_log"></div>
+      </div>
+      </div>
+      <div id="offer_payment" style="display:none;"></div>
+      <button id="payment_bt" onclick="send_payment()">PAYMENT</button>
+    </div>
+  </div>
+</div>
+<div id="user_id" style="display: none;"></div>
+*/
+
 ?>

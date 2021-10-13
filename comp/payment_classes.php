@@ -13,6 +13,27 @@
  *  --> Order cancelation (add Stripe refund to user)
  */
 
+// TODO: Prompt stripe payment from user to pynkiwi
+function create_payment($order_id, $data) {
+    $order_pay_request = new CURL_REQUEST('POST', 'https://api.duffel.com/air/payments', $data);
+    $resp = $order_pay_request->send_duffel_request();
+    if (count($resp->data)) {
+        console_log('\t- Successfully bought order {'.$order_id.'}');
+        // TODO: find order id (must be type hold) and
+        // add pay id (WP user meta)
+    }
+}
+
+function get_updated_order($order_id) {
+    $order_request = new CURL_REQUEST('GET', 'https://api.duffel.com/air/orders/'.$order_id, '');
+    $resp = $order_request->send_duffel_request();
+    if (count($resp->data)) {
+        $total_amount = $resp->data->total_amount . ' ' . $resp->data->total_currency;
+        return [$total_amount];
+    }
+    return [];
+}
+
 /**
  * 
  * Function used to cancel a
@@ -94,10 +115,7 @@ class Orders {
 
     public function add_order_meta() {
         $orders = array();
-        $new_order = array(
-            'ord_id' => $this->order_to_add->get_order_id(),
-            'type' => $this->order_to_add->get_pay_type()
-        );
+        $new_order = $this->order_to_add->get_order_info();
         $user_meta_arr = get_user_meta($this->user_id, $this->wp_key, true); // saved orders
         $order_count = count($user_meta_arr);
         if ($user_meta_arr === false) {
@@ -130,7 +148,7 @@ class Orders {
         $index = 0;
         while ($index < count($orders)) {
             $order_info = $orders[$index];
-            $order = new Order($order_info['type'], $order_info['ord_id']);
+            $order = new Order($order_info['type'], $order_info['ord_id'], $order_info['payment_ops'], $order_info['booking_ref']);
             $order->print_html();
             $index++;
         }
@@ -194,7 +212,7 @@ class Orders {
             $index = 0;
             while ($index < $order_count) {
                 $order_info = $arr[$index];
-                $order = new Order($order_info['type'], $order_info['ord_id']);
+                $order = new Order($order_info['type'], $order_info['ord_id'], $order_info['payment_ops'], $order_info['booking_ref']);
                 $order->print_html();
                 $index++;
             }
@@ -232,38 +250,56 @@ class Order {
     private $pay_type;
     private $order_id;
 
-    public function __construct($type, $order_id)
+    public $payment_ops; // + currency
+    public $booking_ref;
+
+    public function __construct($type, $order_id, $payment_ops, $booking_ref)
     {
         $this->pay_type = $type;
         $this->order_id = $order_id;
+        $this->payment_ops = $payment_ops;
+        $this->booking_ref = $booking_ref;
     }
 
-    public function get_pay_type() {
-        return $this->pay_type;
-    }
-
-    public function get_order_id() {
-        return $this->order_id;
+    public function get_order_info() {
+        return array(
+            'type' => $this->pay_type,
+            'ord_id' => $this->order_id,
+            'payment_ops' => $this->payment_ops,
+            'booking_ref' => $this->booking_ref
+        );
     }
 
     public function print_html() {
-        $script = $this->print_order_info() . $this->print_cancel_order_msg_script() . $this->print_cancel_order_script();
+        $script = $this->print_order_info() . 
+                $this->print_cancel_order_msg_script() . 
+                $this->print_cancel_order_script() . 
+                $this->print_pay_order_msg_script() . 
+                $this->print_pay_order_script();
         $init_code = '<script> '. $script .'document.addEventListener("DOMContentLoaded", function(event) { ';
         $code = $init_code . 'document.getElementById("order_dash").innerHTML += "'; 
 
         $order_entry = '<div class=\'order_entry\'>';
-        $order_entry = $order_entry . '<div id=\'order_id\' class=\'dist\'>Order '.$this->print_order_id().'</div>';
+        $order_entry = $order_entry . '<div id=\'order_id\' class=\'dist\'>Order '.$this->print_booking_ref().'</div>';
         $order_entry = $order_entry . '<input id=\'hidden_order_id\' type=\'hidden\' value=\''.$this->order_id.'\'>';
         if ($this->pay_type === "instant") {
             $order_entry = $order_entry . '<div id=\'order_typ\' class=\'dist\'>Payment: <span class=\'instant_pay\'>●</span></div>';
         } else {
             $order_entry = $order_entry . '<div id=\'order_typ\' class=\'dist\'>Payment: <span class=\'hold_pay\'>●</span></div>';
-            $order_entry = $order_entry . '<div id=\'order_pay\' class=\'dist\'>Pay Order</div>';
+            $order_entry = $order_entry . '<div onclick=\'show_pay_'.$this->order_id.'()\' id=\'order_pay\' class=\'dist\'>Pay Order</div>';
         }
         $order_entry = $order_entry . '<div id=\'order_cancel\' class=\'dist\' onclick=\'show_cancel_'.$this->order_id.'()\'>Cancel Order</div>';
         $order_entry = $order_entry . '<div class=\'show_order dist\' onclick=\'show_'.$this->order_id.'()\'>Show order</div>';
         $order_entry = $order_entry . '</div>';
         $code = $code . $order_entry;
+
+        $buy_order_msg = '<div id=\'pay_'.$this->order_id.'\' class=\'buy_order_msg\' style=\'display: none;\'>';
+        $buy_order_msg = $buy_order_msg . '<div id=\'order_total dist\'>Order Total: '.$this->payment_ops['total_amount'].'</div>';
+        $buy_order_msg = $buy_order_msg . '<div class=\'dist\'>Order payment expires in: '.$this->print_order_hold_exp_date().'</div>';
+        $buy_order_msg = $buy_order_msg . '<div onclick=\'pay_'.$this->order_id.'()\' class=\'buy_order_bt dist\'>Pay now</div>';
+        // stripe payment html
+        $buy_order_msg = $buy_order_msg . '</div>';
+        $code = $code . $buy_order_msg;
 
         $order_cancel_msg = '<div id=\''.$this->order_id.'_cancel\' class=\'cancel_order_msg\' style=\'display: none;\'>';
         $order_cancel_msg = $order_cancel_msg . 'Are you sure you wan\'t to cancel your order?';
@@ -280,8 +316,12 @@ class Order {
         echo $code;
     }
 
-    public function print_order_id() {
-        return '0000_' . substr($this->order_id, count($this->order_id)-4, 3);
+    // public function print_order_id() {
+    //     return '0000_' . substr($this->order_id, count($this->order_id)-4, 3);
+    // }
+
+    public function print_booking_ref() {
+        return strval($this->booking_ref);
     }
 
     private function print_cancel_order_msg_script() {
@@ -300,6 +340,30 @@ class Order {
         } ' ;
     }
 
+    // TODO: If expired don't allow payment
+    private function print_order_hold_exp_date() {
+        $payment_required_by = $this->payment_ops['payment_required_by'];
+        $expires_at = new DateTime(substr($payment_required_by, 0, 10) . "  " . substr($payment_required_by, 11, 5));
+        $curr_date = new DateTime('now');
+        return $expires_at->diff($curr_date)->format("%H:%I:%S");
+    }
+
+    private function print_pay_order_msg_script() {
+        return 'function show_pay_'.$this->order_id.'() {
+            let elem = document.getElementById("pay_'.$this->order_id.'");
+            elem.style.display == "none" ? elem.style.display = "flex" : elem.style.display = "none" 
+        } ';
+    }
+
+    private function print_pay_order_script() {
+        return 'function pay_'.$this->order_id.'() {
+            let url = new URL(\'https://pynkiwi.wpcomstaging.com/?page_id=3294\');
+            url.searchParams.append(\'action_type\', \'2\');
+            url.searchParams.append(\'order_id\', \''.$this->order_id.'\');
+            window.location.href = url;
+        } ' ;
+    }
+
     private function print_order_info() {
         return 'function show_'.$this->order_id.'() { 
             let elem = document.getElementById("'.$this->order_id.'_info"); 
@@ -309,6 +373,7 @@ class Order {
 
     public function debug() {
         console_log('order_id: '.$this->order_id.' type: '.$this->pay_type);
+        console_log('total_amount: '.$this->total_amount.' booking_ref: '.$this->booking_ref);
     }
 }
 
@@ -378,10 +443,14 @@ class Order_request {
             alert('Reload page');
             return;
         }
-        $order = new Order($this->type, $data->id);
+        $payment_opts = array(
+            'total_amount' => $data->total_amount,
+            'payment_required_by' => $data->payment_status->payment_required_by
+        );
+        $order = new Order($this->type, $data->id, $payment_opts, $data->booking_reference);
         return $order;
     }
-}
 
+}
 // ###### EOF ######
 ?>
