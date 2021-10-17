@@ -443,9 +443,9 @@ class Offer_Payment_Info
         console_log('\t- Refunds: ' . $flag_ref);
         if ($refund_before_departure !== NULL && $refund_before_departure->allowed) {
             $refund_penalty_amount = $refund_before_departure->penalty_amount . ' ' . $refund_before_departure->penalty_currency;
-            $script = $script . 'document.getElementById("entry-ref_price").innerHTML += "' . $refund_penalty_amount . '";';
+            $script = $script . 'document.getElementById("entry-ref_price").innerHTML += "' . $refund_penalty_amount . '"; ';
         } else {
-            $script = $script . 'document.getElementById("entry-ref").style.display = "none";';
+            $script = $script . 'document.getElementById("entry-ref").style.display = "none"; ';
         }
 
         $flag_chg = 0;
@@ -453,9 +453,15 @@ class Offer_Payment_Info
         console_log('\t- Changes: ' . $flag_chg);
         if ($change_before_departure !== NULL && $change_before_departure->allowed) {
             $change_penalty_amount = $change_before_departure->penalty_amount . ' ' . $change_before_departure->penalty_currency;
-            $script = $script . 'document.getElementById("entry-chg_price").innerHTML += "' . $change_penalty_amount . '";';
+            $script = $script . 'document.getElementById("entry-chg_price").innerHTML += "' . $change_penalty_amount . '"; ';
         } else {
-            $script = $script . 'document.getElementById("entry-chg").style.display = "none";';
+            $script = $script . 'document.getElementById("entry-chg").style.display = "none"; ';
+        }
+
+        if ($flag_ref == 0 && $flag_chg == 0) {
+            $script = $script . 'document.getElementById("container_free_opts").style.display = "none"; ';
+        } else {
+            $script = $script . 'document.getElementById("container_free_opts").style.transform = "translateY(20%)"; ';
         }
         
         return $script;

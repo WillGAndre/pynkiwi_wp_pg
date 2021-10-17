@@ -179,17 +179,12 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
     echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("main_dash").style.display = "block"; '.$offer_id_html.' }); </script>';
 }
 
-/*
-    Passenger form html in WP
-     1- Run js code
-*/
-
 //                  --- *** ---
 
 
 /* TODO: 
  / Send payment via stripe                                              (ISSUE --> #17)
- / Integrate support for later payment (via payment endpoint)           (ISSUE --> #20)
+ / Integrate support for later payment (via payment endpoint)           (ISSUE --> #20) - Partially Done -> head to L22 payment_classes.php
  / Integrate support for canceling order upon creation                  (ISSUE --> #22) - Partially Done
  / Refactor get_iata_code / get_lat_lon                                 (ISSUE --> #23) - Done
  /

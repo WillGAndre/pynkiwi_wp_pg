@@ -1,3 +1,52 @@
+/*
+    TODO:
+    ---> Refactor code, replace global vars
+        with class that is constructed the 
+        same way as init().
+
+    ---> Add user checkout before 'Payment' bt.
+*/
+
+function show_curr_offer() {
+    let pass_info_elem = document.getElementById("pass_info");
+    let cur_offer_elem = document.getElementById("container_offer");
+    let pass_form_prev_bt = document.getElementById("prev_bt");
+    if (cur_offer_elem != null) {
+        if (cur_offer_elem.style.display == "none") {
+            pass_info_elem.style.display = "none";
+            pass_form_prev_bt.style.display = "none";
+            cur_offer_elem.style.display = "block";
+        }
+    }
+}
+
+function show_pass_form() {
+    let pass_info_elem = document.getElementById("pass_info");
+    let cur_offer_elem = document.getElementById("container_offer");
+    let prev_bt = document.getElementById("prev_bt");
+    if (pass_info_elem != null) {
+        if (pass_info_elem.style.display == "none") {
+            pass_info_elem.style.display = "block";
+            prev_bt.style.display = "inline-flex";
+            cur_offer_elem.style.display = "none";
+        }
+    }
+}
+
+function show_checkout() {
+    let checkout_elem = document.getElementById("checkout");
+    let pass_info_elem = document.getElementById("pass_info");
+    let prev_bt = document.getElementById("prev_bt");
+    if (checkout_elem != null) {
+        if (checkout_elem.style.display == "none") {
+            prev_bt.style.display = "none";
+            pass_info_elem.style.display = "none";
+            checkout_elem.style.display = "flex";
+            print_checkout_html();
+        }
+    }
+}
+
 /**
  * Script used to create list of passengers,
  * add new passengers and clear the current list.
@@ -64,6 +113,66 @@ function check_age() {
             services.disabled = false;
         }
     }
+}
+
+// TODO: Add previous bt to go back
+function print_checkout_html() {
+    let offer_id = document.getElementById("curr_offer_id").innerHTML;
+    let offer_amount = document.getElementById("offer_payment").innerHTML;
+    let checkout_elem = document.getElementById("checkout");
+    if (checkout_elem != null) {
+        checkout_elem.innerHTML = '<div class=\'checkout-entry\'>Offer '+offer_id+': '+offer_amount+'</div>';
+        checkout_elem.innerHTML += print_services_checkout_html();
+        checkout_elem.innerHTML += print_passenger_checkout_html();
+        checkout_elem.innerHTML += print_total_sum_checkout_html();
+    }
+}
+
+function print_services_checkout_html() {
+    let code = '';
+    let index = 0;
+    while (index < passenger_list.length) {
+        let passenger = passenger_list[index];
+        let services = passenger.get_services();
+
+        let serv_index = 0;
+        while (serv_index < services.length) {
+            let service = services[serv_index];
+            let service_id = service.get_id();
+            let service_price = service.get_price();
+            let service_currency = service.get_currency();
+            code += '<div class=\'checkout-sub-entry\'>Service '+service_id+': '+service_price+' '+service_currency+'</div>';
+            serv_index++;
+        }
+
+        index++;
+    }
+    return code;
+}
+
+function print_passenger_checkout_html() {
+    let code = '<div class=\'checkout_mid section\'>';
+    let index = 0;
+    while(index < passenger_list.length) {
+        let passenger = passenger_list[index];
+        code += '<div class=\'checkout-entry\'>Passenger '+(index+1)+' - '+passenger.get_type()+'|'+passenger.get_full_name()+'|'+passenger.get_contacts()+'</div>';
+        index++;
+    }
+    return code + '</div>';
+}
+
+// Pynkiwi tax -> 15%
+// Todo: Add stripe payment 
+function print_total_sum_checkout_html() {
+    let code = '<div class=\'checkout_mid\'><div class=\'checkout-entry\'>Total plus tax: ';
+    let total_amount = get_total_amount(document.getElementById("offer_payment").innerHTML);
+    let total_amount_arr = total_amount.split(' ');
+
+    let pynkiwi_tax = parseFloat(total_amount_arr[0]) * 0.15;
+    let final_total_amount = parseFloat(total_amount_arr[0]) + pynkiwi_tax;
+    code += final_total_amount + ' ' + total_amount_arr[1] + '</div>';
+    code += '<button class=\'pay-bt\' onclick=\'send_payment()\'>Payment</button>'
+    return code + '</div>';
 }
 
 function send_payment() {
@@ -136,7 +245,6 @@ function add_passenger() {
         let services = [];
         let infant_id = "";
         let index = -1;
-        let allocated_service = 0;
 
         if (age <= 1) { // infant_without_seat
             //index = get_index('infant_without_seat');
@@ -177,7 +285,6 @@ function add_passenger() {
                     if (parseInt(quan) != 0) {
                         price = document.getElementById('price-' + ase_id).innerHTML;
                         services.push(new Service(ase_id, quan, price));
-                        allocated_service++;
                     }
                 }
                 ase_index++;
@@ -220,7 +327,7 @@ function add_passenger_to_html_list(passenger) {
     let pass_type = passenger.get_type();
     let pass_name = passenger.get_full_name();
 
-    pass_list.innerHTML += '<div class=\'pass_row\'><div onclick=\'call_action(event)\' id=\'shw_' + pass_id + '\' class=\'pass_tab\'>' + pass_name + ' | ' + pass_type + '</div><div id=\'chg_' + pass_id + '\' onclick=\'call_action(event)\' class=\'pass_bt\' style=\'display: none;\'>Update</div><div id=\'rmv_' + pass_id + '\' onclick=\'call_action(event)\' class=\'pass_bt\' style=\'display: none;\'>Remove</div></div>';
+    pass_list.innerHTML += '<div id=\''+pass_id+'_row\' class=\'pass_row\'><div onclick=\'call_action(event)\' id=\'shw_' + pass_id + '\' class=\'pass_tab\'>' + pass_name + ' | ' + pass_type + '</div><div id=\'chg_' + pass_id + '\' onclick=\'call_action(event)\' class=\'pass_bt\' style=\'display: none;\'>Update</div><div id=\'rmv_' + pass_id + '\' onclick=\'call_action(event)\' class=\'pass_bt\' style=\'display: none;\'>Remove</div></div>';
 }
 
 function call_action(e) {
@@ -237,24 +344,24 @@ function call_action(e) {
     if (pas_index != -1) {
         let pas = passenger_list[pas_index];
         if (key == "shw") { // shw_pas_0000(...)
-            console.log(' [*] Showing passenger info');
             pass_tab_action(pas_id, pas);
         } else if (key == "chg") {
             console.log(' [*] Updating passenger info');
             update_passenger_action(pas_id, pas);
         } else if (key == "rmv") {
             console.log(' [*] Removing passenger');
+            let parent = document.getElementById('pass_list');
+            let max_psgs = document.getElementById("pass_count").innerHTML[2];
+            let curr_pass_count = passenger_list.length + infants_allocated.length;
             pas.remove_passenger_info();
             passenger_ids.push(pas_id);
             passenger_types.push(pas.get_type());
             passenger_list.splice(pas_index, 1);
-            document.getElementById('shw_' + pas_id + '').style.display = 'none';
-            document.getElementById('chg_' + pas_id + '').style.display = 'none';
-            document.getElementById('rmv_' + pas_id + '').style.display = 'none';
-            let max_psgs = document.getElementById("pass_count").innerHTML[2];
-            let curr_pass_count = passenger_list.length + infants_allocated.length;
+            parent.removeChild(document.getElementById(pas_id + '_row'));
+            console.log('\t- Passenger list count: ' + curr_pass_count);
             document.getElementById("pass_count").innerHTML = curr_pass_count + "/" + max_psgs + " Passengers";
             document.getElementById('entry-bday').disabled = false; 
+            clear_form();
         }
     } else {
         throw new Error('Passenger not found');
@@ -267,7 +374,8 @@ function call_action(e) {
  * @param {Class Instance} passenger 
  */
 function pass_tab_action(pas_id, passenger) {
-    if (document.getElementById('chg_' + pas_id + '').style.display = 'none') {
+    if (document.getElementById('chg_' + pas_id + '').style.display == 'none') {
+        console.log(' [*] Showing passenger info');
         passenger.show_passenger_info();
         document.getElementById('chg_' + pas_id + '').style.display = 'inline-flex';
         document.getElementById('rmv_' + pas_id + '').style.display = 'inline-flex';
@@ -473,6 +581,10 @@ class Passenger {
         return this.title + ' ' + this.name;
     }
 
+    get_contacts() {
+        return this.email + ' ' + this.phone
+    }
+
     get_services() {
         return this.services;
     }
@@ -632,6 +744,7 @@ function clear_form() {
             ase_index++;
         }
     }
+    document.getElementById("error-log").innerHTML = "";
 }
 
 function debug_pass_info() {
