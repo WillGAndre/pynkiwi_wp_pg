@@ -11,23 +11,31 @@ function show_curr_offer() {
     let pass_info_elem = document.getElementById("pass_info");
     let cur_offer_elem = document.getElementById("container_offer");
     let pass_form_prev_bt = document.getElementById("prev_bt");
+    let pass_form_next_bt = document.getElementById("next_bt");
     if (cur_offer_elem != null) {
         if (cur_offer_elem.style.display == "none") {
             pass_info_elem.style.display = "none";
             pass_form_prev_bt.style.display = "none";
+            pass_form_next_bt.style.display = "none";
             cur_offer_elem.style.display = "block";
         }
     }
 }
 
 function show_pass_form() {
+    let checkout_elem = document.getElementById("checkout");
+    let prev_bt2 = document.getElementById("prev_bt2");
     let pass_info_elem = document.getElementById("pass_info");
     let cur_offer_elem = document.getElementById("container_offer");
     let prev_bt = document.getElementById("prev_bt");
+    let next_bt = document.getElementById("next_bt");
     if (pass_info_elem != null) {
         if (pass_info_elem.style.display == "none") {
+            checkout_elem.style.display = "none";
+            prev_bt2.style.display = "none";
             pass_info_elem.style.display = "block";
             prev_bt.style.display = "inline-flex";
+            next_bt.style.display = "inline-flex";
             cur_offer_elem.style.display = "none";
         }
     }
@@ -37,12 +45,24 @@ function show_checkout() {
     let checkout_elem = document.getElementById("checkout");
     let pass_info_elem = document.getElementById("pass_info");
     let prev_bt = document.getElementById("prev_bt");
+    let prev_bt2 = document.getElementById("prev_bt2");
+    let next_bt = document.getElementById("next_bt");
     if (checkout_elem != null) {
-        if (checkout_elem.style.display == "none") {
-            prev_bt.style.display = "none";
-            pass_info_elem.style.display = "none";
-            checkout_elem.style.display = "flex";
-            print_checkout_html();
+        let max_psgs = document.getElementById("pass_count").innerHTML[2];
+        let pass_list_len = passenger_list.length;
+        let infants_allocated_list_len = infants_allocated.length;
+
+        if (pass_list_len + infants_allocated_list_len == max_psgs && infants_not_allocated.length == 0) {
+            if (checkout_elem.style.display == "none") {
+                prev_bt.style.display = "none";
+                next_bt.style.display = "none";
+                pass_info_elem.style.display = "none";
+                checkout_elem.style.display = "flex";
+                prev_bt2.style.display = "inline-flex";
+                print_checkout_html();
+            }
+        } else {
+            alert('Please fill out the passenger form.');
         }
     }
 }
@@ -155,7 +175,7 @@ function print_passenger_checkout_html() {
     let index = 0;
     while(index < passenger_list.length) {
         let passenger = passenger_list[index];
-        code += '<div class=\'checkout-entry\'>Passenger '+(index+1)+' - '+passenger.get_type()+'|'+passenger.get_full_name()+'|'+passenger.get_contacts()+'</div>';
+        code += '<div class=\'checkout-entry\'>Passenger '+(index+1)+' - '+passenger.get_type()+' | '+passenger.get_full_name()+' | '+passenger.get_contacts()+'</div>';
         index++;
     }
     return code + '</div>';
