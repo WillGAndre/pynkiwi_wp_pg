@@ -5,8 +5,6 @@
     *1 Legal notice - https://help.duffel.com/hc/en-gb/articles/360021056640
 */
 
-// https://pynkiwi.wpcomstaging.com/?page_id=3294
-
 /**
  * TODO:
  *  --> Order payment
@@ -14,13 +12,15 @@
  */
 
 // TODO: Prompt stripe payment from user to pynkiwi
+// TODO: Prompt services for user selection
 function create_payment($order_id, $data) {
     $order_pay_request = new CURL_REQUEST('POST', 'https://api.duffel.com/air/payments', $data);
     $resp = $order_pay_request->send_duffel_request();
-    if (count($resp->data)) {
+    // debug
+    // var_dump($resp);
+    if (count($resp->data) && $resp->data->id !== null) {
         console_log('\t- Successfully bought order {'.$order_id.'}');
-        // TODO: find order id (must be type hold) and
-        // add pay id (WP user meta)
+        return $resp->data;
     }
 }
 
@@ -100,7 +100,9 @@ class Orders {
     private $user_id;
     private $wp_key = 'ords_';
 
+    // - Order addition --
     private $order_to_add;
+    // ---
 
     public function __construct($user_id)
     {
@@ -151,6 +153,49 @@ class Orders {
             $order = new Order($order_info['type'], $order_info['ord_id'], $order_info['payment_ops'], $order_info['booking_ref']);
             $order->print_html();
             $index++;
+        }
+    }
+
+    public function update_order_payment_meta($order_id, $payment_created_at, $payment_id) {
+        $orders = array();
+        $user_meta_arr = get_user_meta($this->user_id, $this->wp_key, true);
+        if ($user_meta_arr === false) {
+            console_log('\t- User ID not valid');
+        } else {
+            $index = 0;
+            while ($index < count($user_meta_arr)) {
+                $order = $user_meta_arr[$index];
+                if ($order['ord_id'] === $order_id && $order['type'] === "hold") {
+                    $order_payment_ops = $order['payment_ops'];
+                    $updated_order = array(
+                        'type' => 'instant',
+                        'ord_id' => $order_id,
+                        'payment_ops' => array(
+                            'total_amount' => $order_payment_ops['total_amount'],
+                            'payment_required_by' => $order_payment_ops['payment_required_by'],
+                            'payment_created_at' => $payment_created_at,
+                            'payment_id' => $payment_id
+                        ),
+                        'booking_ref' => $order['booking_ref']
+                    );
+
+                    // debug
+                    // var_dump($updated_order);
+                    // --
+                    array_push($orders, $updated_order);
+                } else {
+                    array_push($orders, $order);
+                }
+                $index++;
+            }
+            $user_meta_update = update_user_meta($this->user_id, $this->wp_key, $orders);
+            if (is_int($user_meta_update)) {
+                console_log('\t- WP Key doesnt exist');
+            } else if ($user_meta_update === false) {
+                console_log('\t- Payment update failed');
+            } else {
+                console_log('\t- Payment update successful');
+            }
         }
     }
 
@@ -245,6 +290,22 @@ class Orders {
  * save relevant Order
  * information and print
  * (echo) html and js code.
+ * 
+ * ATM there are three types
+ * of orders:
+ *  
+ *  .Simple "instant":
+ *   Order created and bought
+ *   at moment of creation.
+ * 
+ *  . "hold":
+ *   Order created but not 
+ *   bought for at moment of
+ *   creation.
+ * 
+ *  . "hold" -> "instant" w/ Pay ID:
+ *   Order created and bought for
+ *   later.
  */
 class Order {
     private $pay_type;
@@ -316,10 +377,6 @@ class Order {
         echo $code;
     }
 
-    // public function print_order_id() {
-    //     return '0000_' . substr($this->order_id, count($this->order_id)-4, 3);
-    // }
-
     public function print_booking_ref() {
         return strval($this->booking_ref);
     }
@@ -373,7 +430,8 @@ class Order {
 
     public function debug() {
         console_log('order_id: '.$this->order_id.' type: '.$this->pay_type);
-        console_log('total_amount: '.$this->total_amount.' booking_ref: '.$this->booking_ref);
+        console_log('booking_ref: '.$this->booking_ref);
+        var_dump($this->payment_ops);
     }
 }
 
@@ -434,19 +492,24 @@ class Order_request {
     }
 
     public function create_order() {
-        $order = 0;
         $req = new CURL_REQUEST('POST', 'https://api.duffel.com/air/orders', $this->get_post_data());
         $resp_decoded = $req->send_duffel_request();
         $data = $resp_decoded->data;
             
-        if ($data->id === "") { // TODO: Error handeling
+        if ($data->id === "" || $data === null) { // TODO: Error handeling
             alert('Reload page');
             return;
         }
-        $payment_opts = array(
-            'total_amount' => $data->total_amount,
-            'payment_required_by' => $data->payment_status->payment_required_by
-        );
+        if ($this->type === "instant") {
+            $payment_opts = array(
+                'total_amount' => $data->total_amount
+            );
+        } else {
+            $payment_opts = array(
+                'total_amount' => $data->total_amount,
+                'payment_required_by' => $data->payment_status->payment_required_by
+            );
+        }
         $order = new Order($this->type, $data->id, $payment_opts, $data->booking_reference);
         return $order;
     }

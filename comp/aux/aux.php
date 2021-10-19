@@ -34,7 +34,7 @@ class CURL_REQUEST {
             'Accept: application/json',
             'Content-Type: application/json',
             'Duffel-Version: beta',
-            'Authorization: Bearer duffel_test_vDBYacGBACsUsAYIRATuTQXieoIsb_TxLjcM4hAmUTl'
+            'Authorization: Bearer duffel_test_l1kTCQBeHzONzb71C-EXMWH7OO404PYjH6yOEMESyPD'
         );
     }
 
@@ -43,7 +43,7 @@ class CURL_REQUEST {
             'Accept-Encoding: gzip',
             'Accept: application/json',
             'Duffel-Version: beta',
-            'Authorization: Bearer duffel_test_vDBYacGBACsUsAYIRATuTQXieoIsb_TxLjcM4hAmUTl'
+            'Authorization: Bearer duffel_test_l1kTCQBeHzONzb71C-EXMWH7OO404PYjH6yOEMESyPD'
         );
     }
 
@@ -70,6 +70,7 @@ class CURL_REQUEST {
         curl_setopt($ch, CURLOPT_HTTPHEADER, $this->header);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $res = curl_exec($ch);
+        // debug_headers($ch)
         if ($err = curl_error($ch)) {
             console_log('[*] Error sending request to Duffel - ' . $err);
         } else {
@@ -78,6 +79,32 @@ class CURL_REQUEST {
         }
         curl_close($ch);
         return $resp_dec;
+    }
+
+    /**
+     * When reporting bug to Duffel, 
+     * refer 'request-x-id' so that 
+     * they can actively check the 
+     * request and response
+     */
+    public function debug_headers($ch) {
+        // -- Debug response header
+        $headers = [];
+        curl_setopt($ch, CURLOPT_HEADERFUNCTION,
+            function($curl, $header) use (&$headers)
+            {
+                $len = strlen($header);
+                $header = explode(':', $header, 2);
+                if (count($header) < 2) // ignore invalid headers
+                    return $len;
+
+                $headers[strtolower(trim($header[0]))][] = trim($header[1]);
+
+                return $len;
+            }
+        );
+        var_dump($headers);
+        // ---
     }
 }
 

@@ -3,10 +3,11 @@
     ---> Refactor code, replace global vars
         with class that is constructed the 
         same way as init().
-
-    ---> Add user checkout before 'Payment' bt.
 */
 
+/**
+ * Passenger form segmentation
+ */
 function show_curr_offer() {
     let pass_info_elem = document.getElementById("pass_info");
     let cur_offer_elem = document.getElementById("container_offer");
@@ -66,6 +67,9 @@ function show_checkout() {
         }
     }
 }
+/**
+ * --------------------------- *
+ */
 
 /**
  * Script used to create list of passengers,
@@ -198,42 +202,37 @@ function print_total_sum_checkout_html() {
 function send_payment() {
     let user_id = document.getElementById("user_id").innerHTML;
     let offer_id = document.getElementById("curr_offer_id").innerHTML;
-    let max_psgs = document.getElementById("pass_count").innerHTML[2];
     let total_amount = document.getElementById("offer_payment");
-    let pass_list_len = passenger_list.length;
-    let infants_allocated_list_len = infants_allocated.length;
     let pay_later_flag = 0;
     let input_pay_later = document.getElementById("input_pay_later");
+
     if (input_pay_later != null && input_pay_later.checked) {
         pay_later_flag++;
     }
     if (total_amount != null) {
         total_amount = get_total_amount(total_amount.innerHTML);
     }
+
     console.log('\t- Total amount: ' + total_amount + ' ; Offer id: ' + offer_id);
-    if (pass_list_len + infants_allocated_list_len == max_psgs && infants_not_allocated.length == 0) {
-        let url = new URL("https://pynkiwi.wpcomstaging.com/?page_id=3294");
-        url.searchParams.append("user_id", user_id);
-        url.searchParams.append("pay_offer_id", offer_id);
-        url.searchParams.append("total_amount", total_amount); // includes currency
-        if (pay_later_flag) {
-            url.searchParams.append("type", "hold");
-        } else {
-            url.searchParams.append("type", "instant");
-        }
-
-        let index = 0;
-        while (index < pass_list_len) {
-            let passenger = passenger_list[index];
-            passenger.set_passenger_info(url, index)
-            index++;
-        }
-
-        window.location.href = url;
-        // https://pynkiwi.wpcomstaging.com/?page_id=3294&pay_offer_id=off_0000ABeUHFGL98sK7wUHKK&p_0_id=pas_0000ABeUEc6Rln6s63bZmF&p_0_name=will+pere&p_0_gender=male&p_0_phone=111+111+111&p_0_email=will%40test.com&p_0_city=porto&p_0_postcode=111-11&p_0_birthday=1996-06-22&p_0_ase_0_id=ase_0000ABeUIFssrtvDBiaDaM&p_0_ase_0_quan=0&p_1_id=pas_0000ABeUEc6Rln6s63bZmG&p_1_name=maria+mei&p_1_gender=female&p_1_phone=111+111+111+11&p_1_email=maria%40test.com&p_1_city=porto&p_1_postcode=111-11&p_1_birthday=1990-07-10&p_1_ase_0_id=ase_0000ABeUIFssrtvDBiaDaM&p_1_ase_0_quan=1
+    let url = new URL("https://pynkiwi.wpcomstaging.com/?page_id=3294");
+    url.searchParams.append("user_id", user_id);
+    url.searchParams.append("pay_offer_id", offer_id);
+    url.searchParams.append("total_amount", total_amount); // includes currency
+    
+    if (pay_later_flag) {
+        url.searchParams.append("type", "hold");
     } else {
-        alert('Missing passenger and/or passenger information!');
+        url.searchParams.append("type", "instant");
     }
+
+    let index = 0;
+    while (index < passenger_list.length) {
+        let passenger = passenger_list[index];
+        passenger.set_passenger_info(url, index)
+        index++;
+    }
+
+    window.location.href = url;
 }
 
 
@@ -350,6 +349,18 @@ function add_passenger_to_html_list(passenger) {
     pass_list.innerHTML += '<div id=\''+pass_id+'_row\' class=\'pass_row\'><div onclick=\'call_action(event)\' id=\'shw_' + pass_id + '\' class=\'pass_tab\'>' + pass_name + ' | ' + pass_type + '</div><div id=\'chg_' + pass_id + '\' onclick=\'call_action(event)\' class=\'pass_bt\' style=\'display: none;\'>Update</div><div id=\'rmv_' + pass_id + '\' onclick=\'call_action(event)\' class=\'pass_bt\' style=\'display: none;\'>Remove</div></div>';
 }
 
+/**
+ * Function responsible for 
+ * altering passenger information.
+ * Includes:
+ *  .Show passenger info:
+ *      if clicked passenger info div.
+ *  .Update passenger info:
+ *      update passenger info based on
+ *      form input.
+ *  .Remove passenger info
+ * @param {Event} e 
+ */
 function call_action(e) {
     let elem = e.srcElememt || e.target;
     let elem_id = elem.id;
@@ -372,12 +383,12 @@ function call_action(e) {
             console.log(' [*] Removing passenger');
             let parent = document.getElementById('pass_list');
             let max_psgs = document.getElementById("pass_count").innerHTML[2];
-            let curr_pass_count = passenger_list.length + infants_allocated.length;
             pas.remove_passenger_info();
             passenger_ids.push(pas_id);
             passenger_types.push(pas.get_type());
             passenger_list.splice(pas_index, 1);
             parent.removeChild(document.getElementById(pas_id + '_row'));
+            let curr_pass_count = passenger_list.length + infants_allocated.length;
             console.log('\t- Passenger list count: ' + curr_pass_count);
             document.getElementById("pass_count").innerHTML = curr_pass_count + "/" + max_psgs + " Passengers";
             document.getElementById('entry-bday').disabled = false; 

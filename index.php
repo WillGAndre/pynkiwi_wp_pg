@@ -311,10 +311,13 @@ function init_show_orders() {
 if (isset($_GET['show_orders'])) {
     $user_id = $_GET['user_id'];
     $orders = new Orders($user_id);
+    // Remove comment
     $orders->show_orders();
+
     
     // debug
     // imp
+    //$orders->debug_get_orders();
     $orders->delete_orders();
 }
 
@@ -350,7 +353,19 @@ if (isset($_GET['action_type'])) {
         $payment->amount = $total_amount[0];
         $data->payment = $payment;
         $data->order_id = $order_id;
-        create_payment($order_id, $data);
+        $resp_data = create_payment($order_id, $data);
+        if ($resp_data !== null) {
+            add_action(
+                'init',
+                function() use ($order_id, $resp_data) {
+                    $current_user = wp_get_current_user();
+                    $user_id = $current_user->ID;
+                    $orders = new Orders($user_id);
+                    $orders->update_order_payment_meta($order_id, $resp_data->created_at, $resp_data->id);
+                    $orders->debug_get_orders_meta();
+                }
+            );
+        }
     }
 }
 
