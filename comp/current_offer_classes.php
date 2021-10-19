@@ -332,7 +332,7 @@ class Offer_Payment_Info
      * in order to book flights.
      */
     private function check_doc_required() {
-        if ($this->passenger_identity_documents_required == false) {
+        if ($this->passenger_identity_documents_required === false) {
             console_log('\t- Id docs required: 0');
             return 'document.getElementById("passport-info").style.display = "none"; ';
         }

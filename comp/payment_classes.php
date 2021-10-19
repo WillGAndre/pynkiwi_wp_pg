@@ -510,8 +510,21 @@ class Order_request {
                 'payment_required_by' => $data->payment_status->payment_required_by
             );
         }
+        // --
+        $this->build_order_info($data);
+        // --
         $order = new Order($this->type, $data->id, $payment_opts, $data->booking_reference);
         return $order;
+    }
+
+    /*
+        TODO:
+        Build Order info data and show info onclick 'Show info' (orders) 
+    */
+    public function build_order_info($data) {
+        $documents = $data->documents;
+        $conditions = $data->conditions;
+        var_dump($data);
     }
 
 }

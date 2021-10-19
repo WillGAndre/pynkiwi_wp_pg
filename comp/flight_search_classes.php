@@ -645,6 +645,10 @@ class Offer_request
             console_log('\t- Offers received: ' . $received_offers . ' | Actual: ' . $count_offers);
         } else {
             console_log('\t- Offers received: ' . $count_offers);
+            if ($count_offers === 1) {
+                echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("page_count").innerHTML = "1/'.$count_offers. '"; document.getElementById("page_count_index").style.display = "inline-flex"; }); </script>';
+                return;
+            }
         }
         echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("page_count").innerHTML = "5/'.$count_offers. '"; document.getElementById("page_count_index").style.display = "inline-flex"; }); </script>';
     }
