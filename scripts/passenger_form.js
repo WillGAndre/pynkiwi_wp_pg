@@ -199,6 +199,51 @@ function print_total_sum_checkout_html() {
     return code + '</div>';
 }
 
+// Stripe payment page --> https://pynkiwi.wpcomstaging.com/?page_id=3721
+/*
+    Checkout --> Redirect to Stripe payment page --> Checkout-Result page --> send_payment()
+*/
+function send_payment() {
+    let user_id = document.getElementById("user_id").innerHTML;
+    let offer_id = document.getElementById("curr_offer_id").innerHTML;
+    let duffel_total_amount = document.getElementById("offer_payment");
+    let stripe_total_amount = 0;
+    let pay_later_flag = 0;
+    let input_pay_later = document.getElementById("input_pay_later");
+
+    if (input_pay_later != null && input_pay_later.checked) {
+        pay_later_flag++;
+    }
+    if (duffel_total_amount != null) {
+        duffel_total_amount = get_total_amount(duffel_total_amount.innerHTML);
+        total_amount_arr = duffel_total_amount.split(' ');
+        stripe_total_amount = parseFloat(total_amount_arr[0]) + parseFloat(total_amount_arr[0]) * 0.15;
+        stripe_total_amount = stripe_total_amount + ' ' + total_amount_arr[1];
+    }
+
+    console.log('\t- Total amount: ' + duffel_total_amount + ' ; Offer id: ' + offer_id);
+    let url = new URL("https://pynkiwi.wpcomstaging.com/?page_id=3294"); // ORDERS page
+    if (pay_later_flag) {
+        url.searchParams.append("type", "hold");
+    } else {
+        url.searchParams.append("type", "instant");
+    }
+    url.searchParams.append("user_id", user_id);
+    url.searchParams.append("pay_offer_id", offer_id);
+    url.searchParams.append("stripe_total_amount", stripe_total_amount);
+    url.searchParams.append("duffel_total_amount", duffel_total_amount); // includes currency
+    
+    let index = 0;
+    while (index < passenger_list.length) {
+        let passenger = passenger_list[index];
+        passenger.set_passenger_info(url, index)
+        index++;
+    }
+
+    window.location.href = url;
+}
+
+/*
 function send_payment() {
     let user_id = document.getElementById("user_id").innerHTML;
     let offer_id = document.getElementById("curr_offer_id").innerHTML;
@@ -234,7 +279,7 @@ function send_payment() {
 
     window.location.href = url;
 }
-
+*/
 
 function add_passenger() {
     if (init_flag) {

@@ -194,20 +194,68 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
  /    --> Order payment ("instant" --> Integrate Stripe / "hold" --> Integrate Duffel & Stripe)
  /    --> Order cancelation (add Stripe refund to user)
 */
+
+/* TODO:
+    * -> FIX REDIRECT (CHECKOUT)
+        Should be url: https://pynkiwi.wpcomstaging.com/?page_id=3640
+*/
+if (isset($_GET['page_id']) && $_GET['page_id'] === '3721') {
+    $offer_id = $_GET['offer_id'];
+    $stripe_total_amount = $_GET['stripe_total_amount'];
+    echo '<script>
+    let intervalID_price_check;
+    var monitor = setInterval(function(){
+        let elem = document.activeElement;
+        if(elem && elem.tagName == \'IFRAME\'){
+            clearInterval(monitor);
+            let html_elem = elem.contentDocument.children[0];
+            let body_elem = html_elem.children[1];
+            let aligner_elem = body_elem.children[0].children[2];
+
+            let aligner_head = aligner_elem.children[1];
+            let order_title = aligner_head.children[1];
+            let order_descr = aligner_head.children[2];
+            order_title.innerHTML += \' \' + \''.$offer_id.'\'
+            order_descr.innerHTML += \' Total: \' + \''.$stripe_total_amount.'\'
+
+            let aligner_body = aligner_elem.children[2].children[0].children[1];
+            let submit_bt = aligner_body.children[3].children[0].children[0].children[0];
+            let amount_cont = aligner_body.children[0];
+            let amount_input = amount_cont.children[1];
+            amount_input.addEventListener("change", (event) => {
+                let input_val = event.target.value;
+                let order_split = order_descr.innerHTML.split(\' \');
+                
+                let price_split = order_split[3].split(\'.\');
+                let price_lhs = price_split[0];
+                let price_rhs = price_split[1].slice(0, 2);
+
+                let full_price = price_lhs + \'.\' + price_rhs;
+                if (input_val != full_price) {
+                    submit_bt.disabled = true;
+                } else {
+                    submit_bt.disabled = false;
+                }
+            });
+        }
+    }, 100);
+    </script>';
+}
+
 /**
  * On current offer payment click,
  * the frontend (js), redirects
  * the user back to the account
- * dashboard (to be changes).
+ * dashboard.
  * This redirect includes query
  * parameters in the url, later
  * used to send relevant passenger
  * info to Duffel
  */
-if (isset($_GET['pay_offer_id'])) { 
+if (isset($_GET['pay_offer_id']) && $_GET['page_id'] === '3294') { 
     $user_id = $_GET['user_id'];
     $offer_id = $_GET['pay_offer_id'];
-    $duffel_total_amount = explode(' ', $_GET['total_amount']); // Includes currency
+    $duffel_total_amount = explode(' ', $_GET['duffel_total_amount']); // Includes currency
     $pay_type = $_GET['type'];
 
     $url_info = get_url_info();
@@ -228,6 +276,14 @@ if (isset($_GET['pay_offer_id'])) {
     $order = $order_req->create_order();
     $orders = new Orders($user_id);
     $orders->add_order($order);
+
+    if ($pay_type === "instant") {// Redirect to stripe payment page
+        header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+            'page_id' => 3721,
+            'offer_id' => $offer_id,
+            'stripe_total_amount' => $_GET['stripe_total_amount']
+        )));
+    }
     
     // debug
     // imp
@@ -315,6 +371,7 @@ if (isset($_GET['show_orders'])) {
     $orders->show_orders();
 
     
+
     // debug
     // imp
     //$orders->debug_get_orders();
@@ -368,4 +425,39 @@ if (isset($_GET['action_type'])) {
         }
     }
 }
+
+// TODO: Setup Order script, If price doesnt equal price of
+// order, disable button!
+
+// *---
+// Stripe payment
+// *---
+
+// -- Test instance
+// $test_offer_id = "ofr_0000TEST0001";
+// $test_total_amount = "200.0 EUR";
+// echo '<script>
+//     document.addEventListener("DOMContentLoaded", function(event) { 
+//         let item_name = document.getElementById("item-name");
+//         let item_descr = document.getElementById("item-descr");
+//         if (item_name != null && item_descr != null) {
+//             item_name.innerHTML += \' \' + \''.$test_offer_id.'\';
+//             item_descr.innerHTML += \' Total: \' + \''.$test_total_amount.'\';
+//         } 
+        
+//         let price_input = document.querySelector(".pure-input-1");
+//         if (price_input != null) {
+//             let item_total = document.getElementById("item-descr");
+//             if (item_total != null) {
+//                 item_total = item_total.innerHTML.substring(21);
+//                 price_input.addEventListener("change", function(event) {
+//                     if (price_input.value != item_total) {
+//                         document.getElementById("submit-btn").disabled = true;
+//                     }
+//                 });
+//             }
+//         } 
+//     });</script>';
+
+
 

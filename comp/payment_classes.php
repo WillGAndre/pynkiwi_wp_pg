@@ -524,7 +524,7 @@ class Order_request {
     public function build_order_info($data) {
         $documents = $data->documents;
         $conditions = $data->conditions;
-        var_dump($data);
+        //var_dump($data);
     }
 
 }
