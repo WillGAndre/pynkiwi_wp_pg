@@ -195,10 +195,30 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
  /    --> Order cancelation (add Stripe refund to user)
 */
 
-/* TODO:
-    * -> FIX REDIRECT (CHECKOUT)
-        Should be url: https://pynkiwi.wpcomstaging.com/?page_id=3640
-*/
+/**
+ * Updates first order found with stripe flag (1),
+ * only the offers with stripe flag (2) may appear in 
+ * orders dashboard (TODO)
+ */
+if (isset($_GET['page_id']) && $_GET['page_id'] === '3640') {
+    add_action(
+        'init',
+        function() {
+            $current_user = wp_get_current_user();
+            $user_id = $current_user->ID;
+            $orders = new Orders($user_id);
+            $orders->update_order_checkout_payment_meta();
+        }
+    );
+}
+
+/**
+ * If user selects payment type == "instant",
+ * after creating an Order in Duffel, user is redirected
+ * to Stripe payment page and on successful payment
+ * redirected again to checkout page (in this page
+ * there is an ORDERS button).
+ */
 if (isset($_GET['page_id']) && $_GET['page_id'] === '3721') {
     $offer_id = $_GET['offer_id'];
     $stripe_total_amount = $_GET['stripe_total_amount'];
@@ -278,6 +298,13 @@ if (isset($_GET['pay_offer_id']) && $_GET['page_id'] === '3294') {
     $orders->add_order($order);
 
     if ($pay_type === "instant") {// Redirect to stripe payment page
+        $order_id = $order->get_ord_id();
+        add_action(
+            'init',
+            function() use ($orders, $order_id) { 
+                $orders->update_order_stripe_payment_meta($order_id);
+            }
+        );
         header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
             'page_id' => 3721,
             'offer_id' => $offer_id,
@@ -287,7 +314,7 @@ if (isset($_GET['pay_offer_id']) && $_GET['page_id'] === '3294') {
     
     // debug
     // imp
-    $orders->debug_get_orders();
+    // $orders->debug_get_orders();
     //$orders->delete_orders();
 }
 
@@ -374,7 +401,7 @@ if (isset($_GET['show_orders'])) {
 
     // debug
     // imp
-    //$orders->debug_get_orders();
+    $orders->debug_get_orders();
     $orders->delete_orders();
 }
 

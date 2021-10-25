@@ -199,6 +199,76 @@ class Orders {
         }
     }
 
+    public function update_order_stripe_payment_meta($order_id) {
+        $orders = array();
+        $user_meta_arr = get_user_meta($this->user_id, $this->wp_key, true);
+        if ($user_meta_arr === false) {
+            console_log('\t- User ID not valid'); 
+        } else {
+            $index = 0;
+            while ($index < count($user_meta_arr)) {
+                $order = $user_meta_arr[$index];
+                if ($order['ord_id'] === $order_id) {
+                    $updated_order = array(
+                        'type' => $order['type'],
+                        'ord_id' => $order['ord_id'],
+                        'payment_ops' => $order['payment_ops'],
+                        'stripe_flag' => 1,
+                        'booking_ref' => $order['booking_ref']
+                    );
+                    array_push($orders, $updated_order);
+                } else {
+                    array_push($orders, $order);
+                }
+                $index++;
+            }
+            $user_meta_update = update_user_meta($this->user_id, $this->wp_key, $orders);
+            if (is_int($user_meta_update)) {
+                console_log('\t- WP Key doesnt exist');
+            } else if ($user_meta_update === false) {
+                console_log('\t- Payment update failed');
+            } else {
+                console_log('\t- Payment update successful');
+            }
+        }
+    }
+
+    public function update_order_checkout_payment_meta() {
+        $orders = array();
+        $user_meta_arr = get_user_meta($this->user_id, $this->wp_key, true);
+        if ($user_meta_arr === false) {
+            console_log('\t- User ID not valid'); 
+        } else {
+            $index = 0;
+            $alloc_flag = 1;
+            while ($index < count($user_meta_arr)) {
+                $order = $user_meta_arr[$index];
+                if (isset($order['stripe_flag']) && $alloc_flag === 1) {
+                    $updated_order = array(
+                        'type' => $order['type'],
+                        'ord_id' => $order['ord_id'],
+                        'payment_ops' => $order['payment_ops'],
+                        'stripe_flag' => 2,
+                        'booking_ref' => $order['booking_ref']
+                    );
+                    array_push($orders, $updated_order);
+                    $alloc_flag--;
+                } else {
+                    array_push($orders, $order);
+                }
+                $index++;
+            }
+            $user_meta_update = update_user_meta($this->user_id, $this->wp_key, $orders);
+            if (is_int($user_meta_update)) {
+                console_log('\t- WP Key doesnt exist');
+            } else if ($user_meta_update === false) {
+                console_log('\t- Payment update failed');
+            } else {
+                console_log('\t- Payment update successful');
+            }
+        }
+    }
+
     /**
      * Used for canceling a specific order,
      * there is no 'init' handler (in this file) 
@@ -320,6 +390,10 @@ class Order {
         $this->order_id = $order_id;
         $this->payment_ops = $payment_ops;
         $this->booking_ref = $booking_ref;
+    }
+
+    public function get_ord_id() {
+        return $this->order_id;
     }
 
     public function get_order_info() {
