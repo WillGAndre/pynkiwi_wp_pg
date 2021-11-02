@@ -414,7 +414,7 @@ if (isset($_GET['action_type'])) {
     $action_type = $_GET['action_type'];
     $order_id = $_GET['order_id'];
     
-    if ($action_type === "1") {
+    if ($action_type === "1") { // TODO: Refund
         $flag = cancel_order($order_id);
         if ($flag) {
             add_action(
@@ -446,45 +446,22 @@ if (isset($_GET['action_type'])) {
                     $user_id = $current_user->ID;
                     $orders = new Orders($user_id);
                     $orders->update_order_payment_meta($order_id, $resp_data->created_at, $resp_data->id);
+                    $orders->update_order_stripe_payment_meta($order_id);
                     $orders->debug_get_orders_meta();
                 }
             );
+            $stripe_total_amount = $total_amount[0] + ($total_amount[0] * 0.15);
+            $stripe_total_amount_str = $stripe_total_amount + ' ' + $total_amount[1];
+            header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+                'page_id' => 3721,
+                'offer_id' => $offer_id,
+                'stripe_total_amount' => $stripe_total_amount_str
+            )));
+            // TODO: DBLE check if offer_id and currency is being passed
         }
     }
 }
 
-// TODO: Setup Order script, If price doesnt equal price of
-// order, disable button!
-
-// *---
-// Stripe payment
-// *---
-
-// -- Test instance
-// $test_offer_id = "ofr_0000TEST0001";
-// $test_total_amount = "200.0 EUR";
-// echo '<script>
-//     document.addEventListener("DOMContentLoaded", function(event) { 
-//         let item_name = document.getElementById("item-name");
-//         let item_descr = document.getElementById("item-descr");
-//         if (item_name != null && item_descr != null) {
-//             item_name.innerHTML += \' \' + \''.$test_offer_id.'\';
-//             item_descr.innerHTML += \' Total: \' + \''.$test_total_amount.'\';
-//         } 
-        
-//         let price_input = document.querySelector(".pure-input-1");
-//         if (price_input != null) {
-//             let item_total = document.getElementById("item-descr");
-//             if (item_total != null) {
-//                 item_total = item_total.innerHTML.substring(21);
-//                 price_input.addEventListener("change", function(event) {
-//                     if (price_input.value != item_total) {
-//                         document.getElementById("submit-btn").disabled = true;
-//                     }
-//                 });
-//             }
-//         } 
-//     });</script>';
 
 
 

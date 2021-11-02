@@ -35,7 +35,7 @@ class Single_Offer
 
         // TODO!
         if ($resp_decoded->meta->status === 422 && $resp_decoded->errors[0]->title === "Requested offer is no longer available") {
-            alert('Please reload your page');
+            alert('Requested offer is no longer available - Please reload your page');
             exit();
         } else {
             $data = $resp_decoded->data;

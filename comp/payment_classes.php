@@ -5,14 +5,7 @@
     *1 Legal notice - https://help.duffel.com/hc/en-gb/articles/360021056640
 */
 
-/**
- * TODO:
- *  --> Order payment
- *  --> Order cancelation (add Stripe refund to user)
- */
-
-// TODO: Prompt stripe payment from user to pynkiwi
-// TODO: Prompt services for user selection
+// TODO: Improve if statement line 14
 function create_payment($order_id, $data) {
     $order_pay_request = new CURL_REQUEST('POST', 'https://api.duffel.com/air/payments', $data);
     $resp = $order_pay_request->send_duffel_request();
@@ -210,7 +203,7 @@ class Orders {
                 $order = $user_meta_arr[$index];
                 if ($order['ord_id'] === $order_id) {
                     $updated_order = array(
-                        'type' => $order['type'],
+                        'type' => 'instant',
                         'ord_id' => $order['ord_id'],
                         'payment_ops' => $order['payment_ops'],
                         'stripe_flag' => 1,
@@ -245,7 +238,7 @@ class Orders {
                 $order = $user_meta_arr[$index];
                 if (isset($order['stripe_flag']) && $alloc_flag === 1) {
                     $updated_order = array(
-                        'type' => $order['type'],
+                        'type' => 'instant',
                         'ord_id' => $order['ord_id'],
                         'payment_ops' => $order['payment_ops'],
                         'stripe_flag' => 2,
@@ -320,6 +313,7 @@ class Orders {
         add_action('init', array($this, 'show_orders_meta'));
     }
 
+    // UPDATE 2/11: Only accepts orders of type "hold" or "instant" with stripe_flag = 2
     public function show_orders_meta() {
         $arr = get_user_meta($this->user_id, $this->wp_key, true);
         $order_count = count($arr);
@@ -327,8 +321,17 @@ class Orders {
             $index = 0;
             while ($index < $order_count) {
                 $order_info = $arr[$index];
-                $order = new Order($order_info['type'], $order_info['ord_id'], $order_info['payment_ops'], $order_info['booking_ref']);
-                $order->print_html();
+                $order = new Order(
+                    $order_info['type'], 
+                    $order_info['ord_id'], 
+                    $order_info['payment_ops'], 
+                    $order_info['booking_ref']
+                );
+                
+                if ($order_info['type'] === "hold" or ($order_info['type'] === "instant" and $order_info['stripe_flag'] === 2)) {
+                    $order->print_html();
+                }
+                //$order->print_html();
                 $index++;
             }
         } else {
