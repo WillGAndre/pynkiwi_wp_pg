@@ -220,7 +220,7 @@ if (isset($_GET['page_id']) && $_GET['page_id'] === '3640') {
  * there is an ORDERS button).
  */
 if (isset($_GET['page_id']) && $_GET['page_id'] === '3721') {
-    $offer_id = $_GET['offer_id'];
+    $order_id = $_GET['order_id'];
     $stripe_total_amount = $_GET['stripe_total_amount'];
     echo '<script>
     let intervalID_price_check;
@@ -235,7 +235,7 @@ if (isset($_GET['page_id']) && $_GET['page_id'] === '3721') {
             let aligner_head = aligner_elem.children[1];
             let order_title = aligner_head.children[1];
             let order_descr = aligner_head.children[2];
-            order_title.innerHTML += \' \' + \''.$offer_id.'\'
+            order_title.innerHTML += \' \' + \''.$order_id.'\'
             order_descr.innerHTML += \' Total: \' + \''.$stripe_total_amount.'\'
 
             let aligner_body = aligner_elem.children[2].children[0].children[1];
@@ -307,7 +307,7 @@ if (isset($_GET['pay_offer_id']) && $_GET['page_id'] === '3294') {
         );
         header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
             'page_id' => 3721,
-            'offer_id' => $offer_id,
+            'order_id' => $order_id,
             'stripe_total_amount' => $_GET['stripe_total_amount']
         )));
     }
@@ -451,10 +451,10 @@ if (isset($_GET['action_type'])) {
                 }
             );
             $stripe_total_amount = $total_amount[0] + ($total_amount[0] * 0.15);
-            $stripe_total_amount_str = $stripe_total_amount + ' ' + $total_amount[1];
+            $stripe_total_amount_str = $stripe_total_amount . ' ' . $total_amount[1];
             header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
                 'page_id' => 3721,
-                'offer_id' => $offer_id,
+                'order_id' => $order_id,
                 'stripe_total_amount' => $stripe_total_amount_str
             )));
             // TODO: DBLE check if offer_id and currency is being passed
