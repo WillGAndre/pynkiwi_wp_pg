@@ -1,123 +1,8 @@
 <?php
-// Copyright 2021 - PYNKIWI
-
-// ###### Auxilary ######
-class Baggages {
-    public $sli_id;    // set all: private
-    public $seg_ids;   
-    public $pass_ids;  
-    public $baggages; 
-
-    public function __construct($sli_id, $seg_ids, $pass_ids, $baggages) {
-        $this->sli_id = $sli_id;
-        $this->seg_ids = $seg_ids;
-        $this->pass_ids = array_unique($pass_ids);
-        $this->baggages = $baggages;
-    }
-
-    /**
-     * Print baggage html after Offer
-     * request. Upon printing an Offer,
-     * (normal offer only) this function 
-     * will print the text bellow 
-     * the price button.
-     * 
-     * Args:
-     *  $single_offer -> Same principle as
-     *  Offer's print_html() if $single_offer = 1,
-     *  then print in current offer tab otherwise
-     *  print in flight results.
-     */
-    public function print_baggage_html($single_offer) {
-        $total_seg = count($this->seg_ids);
-        $total_pas = count($this->pass_ids);
-        $total_bag = count($this->baggages);
-
-        $total_bag_types = array();
-        $total_bag_quans = array();
-
-        if ($total_bag / $total_pas === $total_seg) {
-            foreach ($this->baggages as $_ => $baggage) {
-                $baggage_types = $baggage->get_types();
-                $baggage_quans = $baggage->get_quans();
-                array_push($total_bag_types, $baggage_types);
-                array_push($total_bag_quans, $baggage_quans);
-            }
-        } else {
-            console_log(' [*] Debug: $total_bag->{'.$total_bag.'} $total_pas->{'.$total_pas.'} $total_seg->{'.$total_seg. '} $total_bag / $total_pas === $total_seg');
-            throw new Exception('\t- Number of bags per passenger should be equal to the number of segments');
-        }
-
-        if ($single_offer) {
-            $code = 'document.getElementById("curr-bags_text").innerHTML = "'; 
-            $msg = '';
-        } else {
-            $code = '<div id=\'baggage_text\'>';
-            $msg = 'Includes ';
-        }
-
-        if (count(array_unique($total_bag_quans)) === 1 && 1 === count(array_unique($total_bag_types))) {
-            $index = 0;
-            while ($index < count($total_bag_quans[0])) {
-                if ($index > 0 && $msg !== '' && $msg !== 'Includes ') {
-                    $msg = $msg . ' and ';
-                }
-                $type = str_replace('_', ' ', $total_bag_types[0][$index]);
-                $quan = $total_bag_quans[0][$index];
-                $msg = $msg . $quan . ' ' . $type . ' bag';
-                if (intval($quan) > 1) {
-                    $msg = $msg . 's';
-                }
-                $index++;
-            }
-        } else if (count(array_unique($total_bag_quans)) > 1) {
-            throw new Exception('\t- Passengers have different baggage allocations');
-        }
-
-        if ($single_offer && $msg === '') {
-            console_log('\t- Bags per passenger: 0');
-            return 'document.getElementById("entry-bag").style.display = "none"; ';
-        } else if ($msg === 'Includes ') {
-            return;
-        }
-
-        if ($single_offer) {
-            console_log('\t- Bags per passenger: {'.$msg.'}');
-            return $code . $msg . ' per passenger."; ';
-        } else {
-            return $code . $msg . '</div>';
-        }
-        return;
-    }
-}
-
-class Baggage {
-    public $pass_id;
-    public $types;
-    public $quans;
-
-    public function __construct($pass_id, $types, $quans){
-        $this->pass_id = $pass_id;
-        $this->types = $types;
-        $this->quans = $quans;
-    }
-
-    public function get_pass_id() 
-    {
-        return $this->pass_id;
-    }
-
-    public function get_types()
-    {
-        return $this->types;
-    }
-
-    public function get_quans()
-    {
-        return $this->quans;
-    }
-}
-
+// ###### Flight Search Auxilary ######
+/*
+    Airports data -> https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat
+*/
 function country_to_code($country) {
     $country = ucfirst($country);
     $countryList = array(
@@ -383,9 +268,65 @@ function get_offer_ttl($offer_created_at, $offer_expires_at)
 
 /*
     TODO:
+    --> TESTING!!
+
     --> add user friendly 500 error message
         --> button to redirect to /flights-booking
 */
+
+/**
+ * Get distance (in Km)
+ * based on coord.
+ */
+function get_dist_km($lat1, $lon1, $lat2, $lon2) {
+	$theta = $lon1 - $lon2;
+  	$dist = sin(deg2rad($lat1)) * sin(deg2rad($lat2)) +  cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * cos(deg2rad($theta));
+  	$dist = acos($dist);
+  	$dist = rad2deg($dist);
+  	$miles = $dist * 60 * 1.1515;
+	return ($miles * 1.609344); // km
+}
+
+/**
+ * Get IATA code based on city name
+ * and country ($city_name), if 
+ * latitude and longitude is 
+ * provided then cities betwen
+ * 10 km of the given one will
+ * be used.
+ * 
+ * NOTE:
+ *  IATA code is the offical airport/
+ *  city code.
+ */
+function get_iata_code($city_name, $lat1, $lon1) {
+    $iata_code = "";
+    $file = plugin_dir_path(__FILE__) . '/airports.txt';
+    $fp = fopen($file, "r");
+    if ($fp) {
+        while (($buff = fgets($fp)) !== false) {
+            $buff_arr = explode(',', $buff);
+            $city = strval(trim($buff_arr[2], '"'));
+            $country = strval(trim($buff_arr[3], '"'));
+            $iata = strval(trim($buff_arr[4], '"'));
+            $lat2 = floatval($buff_arr[6]);
+            $lon2 = floatval($buff_arr[7]);
+
+            $city_name_arr = explode('&', $city_name);
+            if ($city_name_arr[0] === $city && $city_name_arr[1] === $country && $iata !== "\N") {
+                $iata_code = $iata;
+                break;
+            } else if (get_dist_km($lat1, $lon1, $lat2, $lon2) <= 10 && $iata !== "\N") {
+                $iata_code = $iata;
+                break;
+            }
+        }
+        fclose($fp);
+    } else {
+        echo 'File handler not set';
+    }
+    return $iata_code;
+}
 
 function get_lat_lon($city_name)
 {
@@ -425,51 +366,6 @@ function get_lat_lon($city_name)
     return [$lat, $lon];
 }
 
-function get_iata_code($lat, $lon)
-{
-    $url = 'https://airlabs.co/api/v9/nearby?lat=' . $lat . '&lng=' . $lon . '&distance=20&api_key=abafe3aa-bb01-444a-98b1-4d27266669cc';
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-    $iata_code = "";
-
-    $res = curl_exec($ch);
-    if ($err = curl_error($ch)) {
-        console_log('Error getting IATA code - ' . $err);
-        curl_close($ch);
-        error_msg();
-    } else {
-        $json = json_decode($res);
-        $json_arr = get_object_vars($json);
-
-        /* Debug */
-        // var_dump($json);
-
-        foreach ($json_arr as $key => $entry) {
-            if ($key === "response") {
-                $res_arr = get_object_vars($entry);
-
-                foreach ($res_arr as $_ => $airports) {
-                    foreach ($airports as $_ => $airport_info) {
-                        $airport_info_arr = get_object_vars($airport_info);
-                        foreach ($airport_info_arr as $tag => $value) {
-                            if ($tag === "iata_code") {
-                                $iata_code = $value;
-                            }
-                            if ($iata_code !== "") {
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    curl_close($ch);
-    return $iata_code;
-}
-
 function format_date($date) {
     $real_date = substr($date, 0, 10);
     $real_time = substr($date, 11, 8);
@@ -498,43 +394,4 @@ function check_input_dates($first_date, $second_date)
     }
     return 0;
 }
-
-function debug_log($iata_code_from, $iata_code_to, $first_date, $second_date, $slices_list, $passengers_list)
-{
-    console_log($iata_code_from . ' , ' . $iata_code_to);
-    console_log($first_date . ' , ' . $second_date);
-    var_dump($slices_list);
-    var_dump($passengers_list);
-}
-
-function debug_offer_data($source_iata_code, $destination_iata_code, $departing_at, $arriving_at, $airline, $total_amount)
-{
-    var_dump($source_iata_code);
-    var_dump($destination_iata_code);
-    var_dump($departing_at);
-    var_dump($arriving_at);
-    var_dump($airline);
-    echo $total_amount;
-}
-
-function error_msg()
-{
-    alert('Please refresh your page and try again');
-    exit(0);
-}
-
-function console_log($msg)
-{
-    echo '<script type="text/javascript">';
-    echo 'console.log(\'' . $msg . '\')';
-    echo '</script>';
-}
-
-function alert($msg)
-{
-    echo '<script type="text/javascript">';
-    echo 'alert(\'' . $msg . '\')';
-    echo '</script>';
-}
-// ###### EOF ######
 ?>

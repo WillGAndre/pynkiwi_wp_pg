@@ -27,40 +27,19 @@ class Single_Offer
 
     public function get_single_offer()
     {
-        $url = "https://api.duffel.com/air/offers/" . $this->offer_id . "?return_available_services=true";
-        $header = array(
-            'Accept-Encoding: gzip',
-            'Accept: application/json',
-            'Content-Type: application/json',
-            'Duffel-Version: beta',
-            'Authorization: Bearer duffel_test_vDBYacGBACsUsAYIRATuTQXieoIsb_TxLjcM4hAmUTl'
-        );
+        $req = new CURL_REQUEST('GET', 'https://api.duffel.com/air/offers/'.$this->offer_id.'?return_available_services=true', '');
+        $resp_decoded = $req->send_duffel_request();
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        // debug 
+        // var_dump($resp_decoded);
 
-        $res = curl_exec($ch);
-        if ($err = curl_error($ch)) {
-            console_log('[*] Error getting single offer - ' + $err);
+        // TODO!
+        if ($resp_decoded->meta->status === 422 && $resp_decoded->errors[0]->title === "Requested offer is no longer available") {
+            alert('Requested offer is no longer available - Please reload your page');
+            exit();
         } else {
-            console_log('[*] Updated Offer');
-            $response = gzdecode($res);
-            $resp_decoded = json_decode($response);
-
-            // debug 
-            // var_dump($resp_decoded);
-
-            // TODO!
-            if ($resp_decoded->meta->status === 422 && $resp_decoded->errors[0]->title === "Requested offer is no longer available") {
-                alert('Please reload your page');
-                exit();
-            } else {
-                $data = $resp_decoded->data;
-                $this->walk_data($data);
-            }
+            $data = $resp_decoded->data;
+            $this->walk_data($data);
         }
     }
 
@@ -353,7 +332,7 @@ class Offer_Payment_Info
      * in order to book flights.
      */
     private function check_doc_required() {
-        if ($this->passenger_identity_documents_required == false) {
+        if ($this->passenger_identity_documents_required === false) {
             console_log('\t- Id docs required: 0');
             return 'document.getElementById("passport-info").style.display = "none"; ';
         }
@@ -464,9 +443,9 @@ class Offer_Payment_Info
         console_log('\t- Refunds: ' . $flag_ref);
         if ($refund_before_departure !== NULL && $refund_before_departure->allowed) {
             $refund_penalty_amount = $refund_before_departure->penalty_amount . ' ' . $refund_before_departure->penalty_currency;
-            $script = $script . 'document.getElementById("entry-ref_price").innerHTML += "' . $refund_penalty_amount . '";';
+            $script = $script . 'document.getElementById("entry-ref_price").innerHTML += "' . $refund_penalty_amount . '"; ';
         } else {
-            $script = $script . 'document.getElementById("entry-ref").style.display = "none";';
+            $script = $script . 'document.getElementById("entry-ref").style.display = "none"; ';
         }
 
         $flag_chg = 0;
@@ -474,9 +453,15 @@ class Offer_Payment_Info
         console_log('\t- Changes: ' . $flag_chg);
         if ($change_before_departure !== NULL && $change_before_departure->allowed) {
             $change_penalty_amount = $change_before_departure->penalty_amount . ' ' . $change_before_departure->penalty_currency;
-            $script = $script . 'document.getElementById("entry-chg_price").innerHTML += "' . $change_penalty_amount . '";';
+            $script = $script . 'document.getElementById("entry-chg_price").innerHTML += "' . $change_penalty_amount . '"; ';
         } else {
-            $script = $script . 'document.getElementById("entry-chg").style.display = "none";';
+            $script = $script . 'document.getElementById("entry-chg").style.display = "none"; ';
+        }
+
+        if ($flag_ref == 0 && $flag_chg == 0) {
+            $script = $script . 'document.getElementById("container_free_opts").style.display = "none"; ';
+        } else {
+            $script = $script . 'document.getElementById("container_free_opts").style.transform = "translateY(20%)"; ';
         }
         
         return $script;

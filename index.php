@@ -1,5 +1,9 @@
 <?php
-// Copyright 2021 - PYNKIWI
+/*
+ * Created on Sun Oct 10 2021
+ *
+ * Copyright (c) 2021 PYNKIWI
+ */
 /**
  * Plugin Name: Pynkiwi flights plugin
  * Plugin URI: -
@@ -22,11 +26,14 @@ function add_scripts()
     wp_enqueue_script('plugin-flight-search-calender-scripts', plugin_dir_url(__FILE__) . 'scripts/flight_search_calender.js');
     wp_enqueue_script('plugin-flight-results-scripts', plugin_dir_url(__FILE__) . 'scripts/flight_results_pages.js');
     wp_enqueue_script('plugin-passenger-form-scripts', plugin_dir_url(__FILE__) . 'scripts/passenger_form.js');
+    wp_enqueue_script('plugin-account-order-script', plugin_dir_url(__FILE__) . 'scripts/account_orders.js');
 }
 add_action('wp_enqueue_scripts', 'add_scripts');
 
 // Auxilary Functions 
-include_once(plugin_dir_path(__FILE__) . 'comp/aux.php');
+include_once(plugin_dir_path(__FILE__) . 'comp/aux/flight_search_aux.php');
+include_once(plugin_dir_path(__FILE__) . 'comp/aux/current_offer_aux.php');
+include_once(plugin_dir_path(__FILE__) . 'comp/aux/aux.php');
 // Classes - Slices, Passengers, Offer Request, Offers
 include_once(plugin_dir_path(__FILE__) . 'comp/payment_classes.php');
 include_once(plugin_dir_path(__FILE__) . 'comp/current_offer_classes.php');
@@ -65,14 +72,13 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
         $to_text = str_replace(' ', '&', $to_text);
     }
 
-    // Activate when there are more credits
-    // $geo_arr_from = get_lat_lon($from_text);
-    // $iata_code_from = get_iata_code($geo_arr_from[0], $geo_arr_from[1]);
-    // $geo_arr_to = get_lat_lon($to_text);
-    // $iata_code_to = get_iata_code($geo_arr_to[0], $geo_arr_to[1]);
+    $geo_arr_from = get_lat_lon($from_text);
+    $geo_arr_to = get_lat_lon($to_text);
+    $iata_code_from = get_iata_code($from_text, $geo_arr_from[0], $geo_arr_from[1]);
+    $iata_code_to = get_iata_code($to_text, $geo_arr_to[0], $geo_arr_to[1]);
 
-    $iata_code_from = 'OPO';
-    $iata_code_to = 'YYZ'; // MAD
+    //$iata_code_from = 'OPO';
+    //$iata_code_to = 'YYZ'; // MAD
 
     // Define constants
     define("IATA_FROM", $iata_code_from);
@@ -128,7 +134,7 @@ if (isset($_POST['flight-price'])) {
  * page with a main offer dashboard
  * where he can further customize his offer
  * and pay. The redirect url is sent with the
- * offer_id saved in 'offer_submit'.
+ * offer_id and the current user id.
  */
 function check_user()
 {
@@ -152,7 +158,7 @@ function check_user()
 // Trigger -> onclick of offer price button (redirect to account)
 /**
  * Upon receiving a redirect with a up_offer_id as 
- * a query argument, print offer options information 
+ * a query argument, print offer options info
  * as well as payment info (single offer request).
  */
 if (isset($_GET['up_offer_id'])) {
@@ -161,8 +167,10 @@ if (isset($_GET['up_offer_id'])) {
     show_current_offer($offer_id);
     $single_offer = new Single_Offer($offer_id, $user_id);
     $single_offer->get_single_offer();
+    // ---
     $single_offer->print_single_offer_html();
     $single_offer->print_single_offer_opts_html();
+    // ---
     $single_offer->print_user();
 }
 
@@ -171,40 +179,103 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
     echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("main_dash").style.display = "block"; '.$offer_id_html.' }); </script>';
 }
 
-
 //                  --- *** ---
 
 
 /* TODO: 
  / Send payment via stripe                                              (ISSUE --> #17)
- / Integrate support for later payment (via payment endpoint)           (ISSUE --> #20)
- / Integrate support for canceling order upon creation                  (ISSUE --> #22)
+ / Integrate support for later payment (via payment endpoint)           (ISSUE --> #20) - Partially Done -> head to L22 payment_classes.php
+ / Integrate support for canceling order upon creation                  (ISSUE --> #22) - Partially Done
+ / Refactor get_iata_code / get_lat_lon                                 (ISSUE --> #23) - Done
  /
- / --> Create Order dashboard, this dashboard
-       should include orders that have received
-       payment and orders on hold.
-
-       Within this dashboard, the user should
-       be able to pay a selected order (on "hold")
-       (and select additional baggage, etc),
-       show order info, email order info and 
-       (later implementation) cancel an order ("hold"/"instant").
- /
+ / FILE: payment_classes.php
+ /  \
+ /   TODO:
+ /    --> Order payment ("instant" --> Integrate Stripe / "hold" --> Integrate Duffel & Stripe)
+ /    --> Order cancelation (add Stripe refund to user)
 */
+
+/**
+ * Updates first order found with stripe flag (1),
+ * only the offers with stripe flag (2) may appear in 
+ * orders dashboard (TODO)
+ */
+if (isset($_GET['page_id']) && $_GET['page_id'] === '3640') {
+    add_action(
+        'init',
+        function() {
+            $current_user = wp_get_current_user();
+            $user_id = $current_user->ID;
+            $orders = new Orders($user_id);
+            $orders->update_order_checkout_payment_meta();
+        }
+    );
+}
+
+/**
+ * If user selects payment type == "instant",
+ * after creating an Order in Duffel, user is redirected
+ * to Stripe payment page and on successful payment
+ * redirected again to checkout page (in this page
+ * there is an ORDERS button).
+ */
+if (isset($_GET['page_id']) && $_GET['page_id'] === '3721') {
+    $offer_id = $_GET['offer_id'];
+    $stripe_total_amount = $_GET['stripe_total_amount'];
+    echo '<script>
+    let intervalID_price_check;
+    var monitor = setInterval(function(){
+        let elem = document.activeElement;
+        if(elem && elem.tagName == \'IFRAME\'){
+            clearInterval(monitor);
+            let html_elem = elem.contentDocument.children[0];
+            let body_elem = html_elem.children[1];
+            let aligner_elem = body_elem.children[0].children[2];
+
+            let aligner_head = aligner_elem.children[1];
+            let order_title = aligner_head.children[1];
+            let order_descr = aligner_head.children[2];
+            order_title.innerHTML += \' \' + \''.$offer_id.'\'
+            order_descr.innerHTML += \' Total: \' + \''.$stripe_total_amount.'\'
+
+            let aligner_body = aligner_elem.children[2].children[0].children[1];
+            let submit_bt = aligner_body.children[3].children[0].children[0].children[0];
+            let amount_cont = aligner_body.children[0];
+            let amount_input = amount_cont.children[1];
+            amount_input.addEventListener("change", (event) => {
+                let input_val = event.target.value;
+                let order_split = order_descr.innerHTML.split(\' \');
+                
+                let price_split = order_split[3].split(\'.\');
+                let price_lhs = price_split[0];
+                let price_rhs = price_split[1].slice(0, 2);
+
+                let full_price = price_lhs + \'.\' + price_rhs;
+                if (input_val != full_price) {
+                    submit_bt.disabled = true;
+                } else {
+                    submit_bt.disabled = false;
+                }
+            });
+        }
+    }, 100);
+    </script>';
+}
+
 /**
  * On current offer payment click,
  * the frontend (js), redirects
  * the user back to the account
- * dashboard (to be changes).
+ * dashboard.
  * This redirect includes query
  * parameters in the url, later
  * used to send relevant passenger
  * info to Duffel
  */
-if (isset($_GET['pay_offer_id'])) { 
+if (isset($_GET['pay_offer_id']) && $_GET['page_id'] === '3294') { 
     $user_id = $_GET['user_id'];
     $offer_id = $_GET['pay_offer_id'];
-    $duffel_total_amount = explode(' ', $_GET['total_amount']); // Includes currency
+    $duffel_total_amount = explode(' ', $_GET['duffel_total_amount']); // Includes currency
     $pay_type = $_GET['type'];
 
     $url_info = get_url_info();
@@ -222,11 +293,30 @@ if (isset($_GET['pay_offer_id'])) {
     array_push($selected_offers, $offer_id);
     
     $order_req = new Order_request($pay_type, $services, $selected_offers, $payments, $passengers);
-    $order = $order_req->create_order($user_id);
-    console_log('user id: '.$user_id);
-    $order->get_order();
-}
+    $order = $order_req->create_order();
+    $orders = new Orders($user_id);
+    $orders->add_order($order);
 
+    if ($pay_type === "instant") {// Redirect to stripe payment page
+        $order_id = $order->get_ord_id();
+        add_action(
+            'init',
+            function() use ($orders, $order_id) { 
+                $orders->update_order_stripe_payment_meta($order_id);
+            }
+        );
+        header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+            'page_id' => 3721,
+            'offer_id' => $offer_id,
+            'stripe_total_amount' => $_GET['stripe_total_amount']
+        )));
+    }
+    
+    // debug
+    // imp
+    // $orders->debug_get_orders();
+    //$orders->delete_orders();
+}
 
 /**
  * Extracts passenger and
@@ -282,3 +372,96 @@ function get_url_info() {
     }
     return [$passengers, $services];
 }
+
+/**
+ * Triggers init script for
+ * showing orders.
+ */
+if (isset($_GET['init_show_orders'])) {
+    add_action('init', 'init_show_orders');
+}
+
+function init_show_orders() {
+    $current_user = wp_get_current_user();
+    $current_user_id = $current_user->ID;
+    header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+        'page_id' => 3294,
+        'show_orders' => 1,
+        'user_id' => $current_user_id
+    )));
+}
+
+if (isset($_GET['show_orders'])) {
+    $user_id = $_GET['user_id'];
+    $orders = new Orders($user_id);
+    // Remove comment
+    $orders->show_orders();
+
+    
+
+    // debug
+    // imp
+    $orders->debug_get_orders();
+    $orders->delete_orders();
+}
+
+/**
+ * Action type for available orders,
+ * (1) cancel the selected order,
+ * (2) pay the selected order.
+ */
+if (isset($_GET['action_type'])) {
+    $action_type = $_GET['action_type'];
+    $order_id = $_GET['order_id'];
+    
+    if ($action_type === "1") { // TODO: Refund
+        $flag = cancel_order($order_id);
+        if ($flag) {
+            add_action(
+                'init',
+                function() use ($order_id) {
+                    $current_user = wp_get_current_user();
+                    $user_id = $current_user->ID;
+                    $orders = new Orders($user_id);
+                    $orders->delete_order_meta($order_id);
+                }
+            );
+        }
+    } else if ($action_type === "2") {
+        $info = get_updated_order($order_id);
+        $total_amount = explode(' ', $info[0]);
+        $data = new stdClass();
+        $payment = new stdClass();
+        $payment->type = "balance";
+        $payment->currency = $total_amount[1];
+        $payment->amount = $total_amount[0];
+        $data->payment = $payment;
+        $data->order_id = $order_id;
+        $resp_data = create_payment($order_id, $data);
+        if ($resp_data !== null) {
+            add_action(
+                'init',
+                function() use ($order_id, $resp_data) {
+                    $current_user = wp_get_current_user();
+                    $user_id = $current_user->ID;
+                    $orders = new Orders($user_id);
+                    $orders->update_order_payment_meta($order_id, $resp_data->created_at, $resp_data->id);
+                    $orders->update_order_stripe_payment_meta($order_id);
+                    $orders->debug_get_orders_meta();
+                }
+            );
+            $stripe_total_amount = $total_amount[0] + ($total_amount[0] * 0.15);
+            $stripe_total_amount_str = $stripe_total_amount + ' ' + $total_amount[1];
+            header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+                'page_id' => 3721,
+                'offer_id' => $offer_id,
+                'stripe_total_amount' => $stripe_total_amount_str
+            )));
+            // TODO: DBLE check if offer_id and currency is being passed
+        }
+    }
+}
+
+
+
+
