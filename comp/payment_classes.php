@@ -92,6 +92,7 @@ function cancel_order($order_id) {
 class Orders {
     private $user_id;
     private $wp_key = 'ords_';
+    private $wp_key_pen_ords = 'pen_ords_';
 
     // - Order addition --
     private $order_to_add;
@@ -101,6 +102,7 @@ class Orders {
     {
         $this->user_id = $user_id;
         $this->wp_key = $this->wp_key . $this->user_id;
+        $this->wp_key_pen_ords = $this->wp_key_pen_ords . $this->user_id;
     }
 
     public function add_order($order) {
@@ -354,6 +356,37 @@ class Orders {
         }
         return;
     }
+
+    // -*-
+
+    /**
+     * Add pending order: Adds offer_id associated
+     * to future order. This offer_id should be added
+     * to the user meta just before being prompted
+     * for payment (stripe).
+     */
+    public function add_pending_order($offer_id) {
+        $user_meta_update = update_user_meta($this->user_id, $this->wp_key_pen_ords, $offer_id);
+        if (is_int($user_meta_update)) {
+            console_log('\t- WP Key Pen Ords doesnt exist');
+        } else if ($user_meta_update === false) {
+            console_log('\t- Pending Order update failed');
+        } else {
+            console_log('\t- Pending Order update successful');
+        }
+    }
+
+    public function get_pending_order() {
+        $user_meta_arr = get_user_meta($this->user_id, $this->wp_key_pen_ords, true);
+        if ($user_meta_arr === false) {
+            console_log('\t- User ID not valid');
+        } else {
+            return $user_meta_arr;
+        }
+        return -1;
+    }
+
+    // -*-
 }
 
 

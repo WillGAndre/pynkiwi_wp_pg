@@ -16,6 +16,12 @@
  */
 
 /**
+ * Init DB
+ */
+include_once(plugin_dir_path(__FILE__) . 'db/index_db.php');
+//register_activation_hook(plugin_dir_path(__FILE__) . 'db/index_db.php', 'pass_info_db_install');
+
+/**
  * Add Stylesheet for flight search results
  */
 function add_scripts()
@@ -182,12 +188,7 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
 //                  --- *** ---
 
 
-/* TODO: 
- / Send payment via stripe                                              (ISSUE --> #17)
- / Integrate support for later payment (via payment endpoint)           (ISSUE --> #20) - Partially Done -> head to L22 payment_classes.php
- / Integrate support for canceling order upon creation                  (ISSUE --> #22) - Partially Done
- / Refactor get_iata_code / get_lat_lon                                 (ISSUE --> #23) - Done
- /
+/*
  / FILE: payment_classes.php
  /  \
  /   TODO:
@@ -200,6 +201,7 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
  * only the offers with stripe flag (2) may appear in 
  * orders dashboard (TODO)
  */
+/*
 if (isset($_GET['page_id']) && $_GET['page_id'] === '3640') {
     add_action(
         'init',
@@ -208,6 +210,28 @@ if (isset($_GET['page_id']) && $_GET['page_id'] === '3640') {
             $user_id = $current_user->ID;
             $orders = new Orders($user_id);
             $orders->update_order_checkout_payment_meta();
+        }
+    );
+}
+*/
+
+if (isset($_GET['page_id']) && $_GET['page_id'] === '3640') { 
+    add_action(
+        'init',
+        function() {
+            $current_user = wp_get_current_user();
+            $user_id = $current_user->ID;
+            $orders = new Orders($user_id);
+            $offer_id = $orders->get_pending_order();
+            if ($offer_id !== -1) {
+                $offer_info = get_off_info($offer_id); //stdClass
+                if ($offer_info === null) {
+                    console_log('Failed to get offer passenger information');
+                }
+                var_dump($offer_info);  // TODO: Create order from off_info
+            } else {
+                console_log('Failed to get pending order');
+            }
         }
     );
 }
@@ -220,7 +244,7 @@ if (isset($_GET['page_id']) && $_GET['page_id'] === '3640') {
  * there is an ORDERS button).
  */
 if (isset($_GET['page_id']) && $_GET['page_id'] === '3721') {
-    $order_id = $_GET['order_id'];
+    $offer_id = $_GET['offer_id'];
     $stripe_total_amount = $_GET['stripe_total_amount'];
     echo '<script>
     let intervalID_price_check;
@@ -235,7 +259,7 @@ if (isset($_GET['page_id']) && $_GET['page_id'] === '3721') {
             let aligner_head = aligner_elem.children[1];
             let order_title = aligner_head.children[1];
             let order_descr = aligner_head.children[2];
-            order_title.innerHTML += \' \' + \''.$order_id.'\'
+            order_title.innerHTML += \' \' + \''.$offer_id.'\'
             order_descr.innerHTML += \' Total: \' + \''.$stripe_total_amount.'\'
 
             let aligner_body = aligner_elem.children[2].children[0].children[1];
@@ -262,6 +286,12 @@ if (isset($_GET['page_id']) && $_GET['page_id'] === '3721') {
     </script>';
 }
 
+/*
+    TODO: Change payment flow.
+        Create Database to save customer info, then after stripe 
+        payment, trigger duffel payment / order creation.
+        (https://codex.wordpress.org/Creating_Tables_with_Plugins)
+*/
 /**
  * On current offer payment click,
  * the frontend (js), redirects
@@ -272,6 +302,7 @@ if (isset($_GET['page_id']) && $_GET['page_id'] === '3721') {
  * used to send relevant passenger
  * info to Duffel
  */
+/*
 if (isset($_GET['pay_offer_id']) && $_GET['page_id'] === '3294') { 
     $user_id = $_GET['user_id'];
     $offer_id = $_GET['pay_offer_id'];
@@ -316,6 +347,25 @@ if (isset($_GET['pay_offer_id']) && $_GET['page_id'] === '3294') {
     // imp
     // $orders->debug_get_orders();
     //$orders->delete_orders();
+}
+*/
+
+if (isset($_GET['pay_offer_id']) && $_GET['page_id'] === '3294') { 
+    $user_id = $_GET['user_id'];
+    $offer_id = $_GET['pay_offer_id'];
+    $url_info = get_url_info();
+    $passengers = $url_info[0];
+    $services = $url_info[1];
+    insert_off_info($offer_id, $passengers, $services);
+    add_action('init', function () use ($user_id, $offer_id) {
+        $orders = new Orders($user_id);
+        $orders->add_pending_order($offer_id); // TODO: Maybe also add timestamp for better security (also in DB)
+    });
+    header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+        'page_id' => 3721,
+        'offer_id' => $offer_id,
+        'stripe_total_amount' => $_GET['stripe_total_amount']
+    )));
 }
 
 /**
@@ -457,7 +507,6 @@ if (isset($_GET['action_type'])) {
                 'order_id' => $order_id,
                 'stripe_total_amount' => $stripe_total_amount_str
             )));
-            // TODO: DBLE check if offer_id and currency is being passed
         }
     }
 }
