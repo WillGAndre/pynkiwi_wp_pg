@@ -76,6 +76,7 @@ class CURL_REQUEST {
         } else {
             $response = gzdecode($res);
             $resp_dec = json_decode($response);
+            // var_dump($resp_dec);
         }
         curl_close($ch);
         return $resp_dec;

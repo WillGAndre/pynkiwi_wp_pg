@@ -142,12 +142,45 @@ class Orders {
             }
         }
         // Print Orders
-        $index = 0;
-        while ($index < count($orders)) {
-            $order_info = $orders[$index];
-            $order = new Order($order_info['type'], $order_info['ord_id'], $order_info['payment_ops'], $order_info['booking_ref']);
-            $order->print_html();
-            $index++;
+        // $index = 0;
+        // while ($index < count($orders)) {
+        //     $order_info = $orders[$index];
+        //     $order = new Order($order_info['type'], $order_info['ord_id'], $order_info['payment_ops'], $order_info['booking_ref']);
+        //     $order->print_html();
+        //     $index++;
+        // }
+    }
+
+    public function add_pending_order_meta($order) {
+        $orders = array();
+        $new_order = $order->get_order_info();
+        $user_meta_arr = get_user_meta($this->user_id, $this->wp_key, true); // saved orders
+        $order_count = count($user_meta_arr);
+        if ($user_meta_arr === false) {
+            console_log('\t- User ID not valid');
+        } else if ($order_count && !($order_count === 1 && $user_meta_arr[0] === "")) {
+            $index = 0;
+            while ($index < $order_count) {
+                array_push($orders, $user_meta_arr[$index]);
+                $index++;
+            }
+            array_push($orders, $new_order);
+            $user_meta_update = update_user_meta($this->user_id, $this->wp_key, $orders);
+            if (is_int($user_meta_update)) {
+                console_log('\t- WP Key doesnt exist');
+            } else if ($user_meta_update === false) {
+                console_log('\t- Update failed');
+            } else {
+                console_log('\t- Update successful');
+            }
+        } else {
+            array_push($orders, $new_order);
+            $user_meta_add = add_user_meta($this->user_id, $this->wp_key, $orders);
+            if ($user_meta_add === false) {
+                console_log('\t- Failed to add order');
+            } else {
+                console_log('\t- Added new order successfully');
+            }
         }
     }
 
@@ -330,10 +363,7 @@ class Orders {
                     $order_info['booking_ref']
                 );
                 
-                if ($order_info['type'] === "hold" or ($order_info['type'] === "instant" and $order_info['stripe_flag'] === 2)) {
-                    $order->print_html();
-                }
-                //$order->print_html();
+                $order->print_html();
                 $index++;
             }
         } else {
@@ -365,8 +395,8 @@ class Orders {
      * to the user meta just before being prompted
      * for payment (stripe).
      */
-    public function add_pending_order($offer_id) {
-        $user_meta_update = update_user_meta($this->user_id, $this->wp_key_pen_ords, $offer_id);
+    public function add_pending_order($offer_id, $duffel_total_amount) {
+        $user_meta_update = update_user_meta($this->user_id, $this->wp_key_pen_ords, [$offer_id, $duffel_total_amount]);
         if (is_int($user_meta_update)) {
             console_log('\t- WP Key Pen Ords doesnt exist');
         } else if ($user_meta_update === false) {
@@ -607,6 +637,7 @@ class Order_request {
         $data = $resp_decoded->data;
             
         if ($data->id === "" || $data === null) { // TODO: Error handeling
+            var_dump($data);
             alert('Reload page');
             return;
         }

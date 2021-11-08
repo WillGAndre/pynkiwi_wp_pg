@@ -17,6 +17,7 @@ function pass_info_db_install() {
     $charset_collate = $wpdb->get_charset_collate();
     $sql = "CREATE TABLE IF NOT EXISTS "."off_pass_info"." (
         Off_ID TEXT NOT NULL,
+        Pas_ID TEXT NOT NULL,
         Title TEXT NOT NULL,
         Name TEXT NOT NULL,
         Gender TEXT NOT NULL,
@@ -43,6 +44,7 @@ function insert_off_info($offer_id, $passengers, $services) {
     foreach ($passengers as $passenger) {
         $data = array(
             'Off_ID' => $offer_id,
+            'Pas_ID' => $passenger->id,
             'Title' => $passenger->title,
             'Name' => $passenger->given_name . ' ' . $passenger->family_name,
             'Gender' => $passenger->gender,
@@ -82,13 +84,54 @@ function get_off_info($offer_id) {
     global $wpdb;
     $sql_results = '
         SELECT * FROM `off_pass_info` WHERE `Off_ID`=\''.$offer_id.'\';';
-    $results = $wpdb->get_row($sql_results , OBJECT);
+    $results = $wpdb->get_results($sql_results , OBJECT);
     if ($results !== null) {
         return $results;
     } else {
         console_log('Failed to get offer passenger info - Please retry your search');
     }
     return null;
+}
+
+// --- AUX
+
+function read_off_info($offer_info) {
+    // array
+    $passengers = array();
+    $services = array();
+    foreach($offer_info as $passenger_info) {
+        $passenger = new stdClass();
+        $passenger->title = $passenger_info->Title;
+        $passenger->phone_number = $passenger_info->Phone;
+        if ($passenger_info->InfantID !== "") {
+            $passenger->infant_passenger_id = $passenger_info->InfantID;
+        }
+        if ($passenger_info->DocID !== "") {
+            $identity_documents = array();
+            $doc_info = new stdClass();
+            $doc_info->unique_identifier = $passenger_info->DocID;
+            $doc_info->type = "passport";
+            $doc_info->issuing_country_code = country_to_code($passenger_info->DocCountryCode);
+            $doc_info->doc_exp_date = $passenger_info->DocExpDate;
+            array_push($identity_documents, $doc_info);
+            $passenger->identity_documents = $identity_documents;
+        }
+        $passenger->id = $passenger_info->Pas_ID;
+        $full_name = explode(' ', $passenger_info->Name);
+        $passenger->given_name = $full_name[0];
+        $passenger->gender = $passenger_info->Gender;
+        $passenger->family_name = $full_name[1];
+        $passenger->email = $passenger_info->Mail;
+        $passenger->born_on = $passenger_info->BDay;
+        if ($passenger_info->ServiceID !== "") {
+            $service = new stdClass();
+            $service->id = $passenger_info->ServiceID;
+            $service->quantity = $passenger_info->ServiceQuan;
+            array_push($services, $service);
+        }
+        array_push($passengers, $passenger);
+    }
+    return [$passengers, $services];
 }
 
 ?>
