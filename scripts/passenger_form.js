@@ -199,7 +199,7 @@ function print_total_sum_checkout_html() {
     return code + '</div>';
 }
 
-// Stripe payment page --> https://pynkiwi.wpcomstaging.com/?page_id=3721
+// Stripe payment page --> https://pynkiwi.com/?page_id=3721
 /*
     Checkout --> Redirect to Stripe payment page --> Checkout-Result page --> send_payment()
 */
@@ -222,7 +222,7 @@ function send_payment() {
     }
 
     console.log('\t- Total amount: ' + duffel_total_amount + ' ; Offer id: ' + offer_id);
-    let url = new URL("https://pynkiwi.wpcomstaging.com/?page_id=3294"); // ORDERS page
+    let url = new URL("https://pynkiwi.com/?page_id=3294"); // ORDERS page
     if (pay_later_flag) {
         url.searchParams.append("type", "hold");
     } else {
@@ -259,7 +259,7 @@ function send_payment() {
     }
 
     console.log('\t- Total amount: ' + total_amount + ' ; Offer id: ' + offer_id);
-    let url = new URL("https://pynkiwi.wpcomstaging.com/?page_id=3294");
+    let url = new URL("https://pynkiwi.com/?page_id=3294");
     url.searchParams.append("user_id", user_id);
     url.searchParams.append("pay_offer_id", offer_id);
     url.searchParams.append("total_amount", total_amount); // includes currency

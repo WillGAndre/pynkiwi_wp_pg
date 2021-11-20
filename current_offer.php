@@ -20,13 +20,13 @@ function check_user() {
         console_log('user logged in');
         $current_user = wp_get_current_user();
         $current_user_id = $current_user->ID;
-        header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+        header('Location: https://pynkiwi.com/?' . http_build_query(array(
             'page_id' => 2475,
             'up_offer_id' => $_POST['offer_submit'],
             'user_id' => $current_user_id
         )));
     else : // TODO: !
-        header('Location: https://pynkiwi.wpcomstaging.com/?page_id=2478');
+        header('Location: https://pynkiwi.com/?page_id=2478');
         console_log('user not logged in');
     endif;
 }
@@ -81,7 +81,7 @@ if (isset($_GET['pay_offer_id']) && $_GET['page_id'] === '3294') {
             $orders = new Orders($user_id);
             $orders->add_pending_order($offer_id, $duffel_total_amount);
         });
-        header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+        header('Location: https://pynkiwi.com/?' . http_build_query(array(
             'page_id' => 3721,
             'offer_id' => $offer_id,
             'stripe_total_amount' => $_GET['stripe_total_amount']

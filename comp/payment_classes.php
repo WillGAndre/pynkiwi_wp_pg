@@ -530,7 +530,7 @@ class Order {
 
     private function print_cancel_order_script() {
         return 'function cancel_'.$this->order_id.'() {
-            let url = new URL(\'https://pynkiwi.wpcomstaging.com/?page_id=3294\');
+            let url = new URL(\'https://pynkiwi.com/?page_id=3294\');
             url.searchParams.append(\'action_type\', \'1\');
             url.searchParams.append(\'order_id\', \''.$this->order_id.'\');
             window.location.href = url;
@@ -554,7 +554,7 @@ class Order {
 
     private function print_pay_order_script() {
         return 'function pay_'.$this->order_id.'() {
-            let url = new URL(\'https://pynkiwi.wpcomstaging.com/?page_id=3294\');
+            let url = new URL(\'https://pynkiwi.com/?page_id=3294\');
             url.searchParams.append(\'action_type\', \'2\');
             url.searchParams.append(\'order_id\', \''.$this->order_id.'\');
             window.location.href = url;

@@ -1,5 +1,13 @@
 <?php
 
+/*
+    TODO:
+    - Add Order information
+    - Add Order refund
+
+    - Issue #33: Remove hidden inputs from DOM
+*/
+
 /**
  * Triggers init script for
  * showing orders.
@@ -11,7 +19,7 @@ if (isset($_GET['init_show_orders'])) {
 function init_show_orders() {
     $current_user = wp_get_current_user();
     $current_user_id = $current_user->ID;
-    header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+    header('Location: https://pynkiwi.com/?' . http_build_query(array(
         'page_id' => 3294,
         'show_orders' => 1,
         'user_id' => $current_user_id
@@ -79,7 +87,7 @@ if (isset($_GET['action_type'])) {
             );
             $stripe_total_amount = $total_amount[0] + ($total_amount[0] * 0.15);
             $stripe_total_amount_str = $stripe_total_amount . ' ' . $total_amount[1];
-            header('Location: https://pynkiwi.wpcomstaging.com/?' . http_build_query(array(
+            header('Location: https://pynkiwi.com/?' . http_build_query(array(
                 'page_id' => 3721,
                 'order_id' => $order_id,
                 'stripe_total_amount' => $stripe_total_amount_str
