@@ -215,11 +215,11 @@ class Offer
     {
         $div = "";
         while (count($airlines) !== 0) { 
-            $airline = array_pop($airlines);    // https://pynkiwi.wpcomstaging.com/wp-content/uploads/2021/09/' . $airline_logo_name . '.png
+            $airline = array_pop($airlines);    // https://pynkiwi.com/wp-content/uploads/2021/09/' . $airline_logo_name . '.png
             $airline_logo_name = $this->get_airline_logo_name($airline);
             
             if ($airline_logo_name !== '') {
-                $img_tag = '<img title=\'' . $airline . '\' height=\'24px\' width=\'24px\' src=\'https://pynkiwi.wpcomstaging.com/wp-content/uploads/2021/09/' . $airline_logo_name . '.png\'>';
+                $img_tag = '<img title=\'' . $airline . '\' height=\'24px\' width=\'24px\' src=\'https://pynkiwi.com/wp-content/uploads/2021/09/' . $airline_logo_name . '.png\'>';
                 $div = $div . $img_tag;
             }
         }
