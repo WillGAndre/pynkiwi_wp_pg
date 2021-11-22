@@ -141,14 +141,6 @@ class Orders {
                 console_log('\t- Added new order successfully');
             }
         }
-        // Print Orders
-        // $index = 0;
-        // while ($index < count($orders)) {
-        //     $order_info = $orders[$index];
-        //     $order = new Order($order_info['type'], $order_info['ord_id'], $order_info['payment_ops'], $order_info['booking_ref']);
-        //     $order->print_html();
-        //     $index++;
-        // }
     }
 
     public function add_pending_order_meta($order) {
@@ -348,21 +340,20 @@ class Orders {
         add_action('init', array($this, 'show_orders_meta'));
     }
 
-    // UPDATE 2/11: Only accepts orders of type "hold" or "instant" with stripe_flag = 2
     public function show_orders_meta() {
         $arr = get_user_meta($this->user_id, $this->wp_key, true);
         $order_count = count($arr);
         if ($order_count && !($order_count === 1 && $arr[0] === "")) {
             $index = 0;
             while ($index < $order_count) {
-                $order_info = $arr[$index];
+                $order = $arr[$index];
                 $order = new Order(
-                    $order_info['type'], 
-                    $order_info['ord_id'], 
-                    $order_info['payment_ops'], 
-                    $order_info['booking_ref']
+                    $order['type'], 
+                    $order['ord_id'], 
+                    $order['payment_ops'], 
+                    $order['booking_ref'],
+                    $order['info']
                 );
-                
                 $order->print_html();
                 $index++;
             }
@@ -450,12 +441,13 @@ class Order {
     public $payment_ops; // + currency
     public $booking_ref;
 
-    public function __construct($type, $order_id, $payment_ops, $booking_ref)
+    public function __construct($type, $order_id, $payment_ops, $booking_ref, $info)
     {
         $this->pay_type = $type;
         $this->order_id = $order_id;
         $this->payment_ops = $payment_ops;
         $this->booking_ref = $booking_ref;
+        $this->info = $info;
     }
 
     public function get_ord_id() {
@@ -467,8 +459,15 @@ class Order {
             'type' => $this->pay_type,
             'ord_id' => $this->order_id,
             'payment_ops' => $this->payment_ops,
-            'booking_ref' => $this->booking_ref
+            'booking_ref' => $this->booking_ref,
+            'info' => $this->info
         );
+    }
+
+    public function get_order_info_html() { // TODO: Update this div with Order info field
+        $order_info = '<div id=\''.$this->order_id.'_info\' class=\'order_info\' style=\'display: none;\'>'; 
+        $order_info = $order_info . 'Testing order info'; 
+        $order_info = $order_info . '</div>';
     }
 
     public function print_html() {
@@ -652,20 +651,40 @@ class Order_request {
             );
         }
         // --
-        $this->build_order_info($data);
+        $order_info = $this->build_order_info($data);
         // --
-        $order = new Order($this->type, $data->id, $payment_opts, $data->booking_reference);
+        $order = new Order($this->type, $data->id, $payment_opts, $data->booking_reference, $order_info);
         return $order;
     }
 
-    /*
-        TODO:
-        Build Order info data and show info onclick 'Show info' (orders) 
-    */
     public function build_order_info($data) {
-        $documents = $data->documents;
+        $synced_at = $data->synced_at;
+        $passengers = $data->passengers;
+        $services = $data->services;
         $conditions = $data->conditions;
-        //var_dump($data);
+
+        $slices = $data->slices;    // Array
+        $slices_info = array();
+        foreach($slices as $slice) {
+            $segments = $slice->segments;
+            $slice_conditions = $slice->conditions;
+            $segment_info = array();
+            foreach($segments as $segment) {
+                $origin = $segment->origin->city_name;
+                $destination = $segment->destination->city_name;
+                array_push($segment_info, array('origin' => $origin, 'destination' => $destination));
+            }
+            array_push($slices_info, array('slice_conditions' => $slice_conditions, 'segment_info' => $segment_info));
+        }
+
+        $order_info = new stdClass;
+        $order_info->synced_at = $synced_at;
+        $order_info->passengers = $passengers;
+        $order_info->services = $services;
+        $order_info->conditions = $conditions;
+        $order_info->slices = $slices_info;
+        
+        return $order_info;
     }
 
 }
