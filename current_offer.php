@@ -25,10 +25,22 @@ function check_user() {
             'up_offer_id' => $_POST['offer_submit'],
             'user_id' => $current_user_id
         )));
-    else : // TODO: !
+    else :
         header('Location: https://pynkiwi.com/?page_id=2478');
         console_log('user not logged in');
     endif;
+}
+
+if (isset($_GET['page_id']) && $_GET['page_id'] === "2478") {
+    echo '<script>
+        document.addEventListener("DOMContentLoaded", function(event) {
+            document.querySelector(\'.register\').addEventListener("submit", function(event) {
+                if (document.getElementById(\'ur-submit-message-node\') != null) {
+                    javascript:history.go(-1);
+                }
+            }) 
+        });
+    </script>';
 }
 
 

@@ -464,10 +464,73 @@ class Order {
         );
     }
 
-    public function get_order_info_html() { // TODO: Update this div with Order info field
+    public function get_order_info_html() { // TODO: Add slices info ($this->info->slices)
+        $pass_history = array();
         $order_info = '<div id=\''.$this->order_id.'_info\' class=\'order_info\' style=\'display: none;\'>'; 
-        $order_info = $order_info . 'Testing order info'; 
+        $order_info = $order_info . '<div>Synced at: '.$this->info->synced_at.'</div>';
+        $order_info = $order_info . '<div>Passengers: ';
+        $i = 0;
+        while($i < count($this->info->passengers)) {
+            $pass_name = $this->info->passengers[$i]->given_name . ' ' . $this->info->passengers[$i]->family_name;
+            $pass_id = $this->info->passengers[$i]->id;
+            $pass_history[$pass_name] = $pass_id;
+            $order_info = $order_info . $pass_name;
+            $i += 1;
+        }
         $order_info = $order_info . '</div>';
+        // ---
+        $order_info = $order_info . '<div>Services: ';
+        if (count($this->info->services) !== 0) {
+            $i = 0;
+            while($i < count($this->info->services)) {
+                $passenger_ids = $this->info->services[$i]->passenger_ids;
+                $j = 0;
+                while ($j < count($passenger_ids)) {
+                    $pass_name = array_search($passenger_ids[$j], $pass_history);
+                    if ($pass_name !== false) {
+                        $order_info = $order_info . $pass_name . ' ' . $this->info->services[$i]->type . ' ' . $this->info->services[$i]->quantity;
+                    }
+                }
+                $i += 1;
+            }
+        } else {
+            $order_info = $order_info . 'None';
+        }
+        $order_info = $order_info .'</div>';
+        // ---
+        $order_info = $order_info . '<div>Conditions: <div>';
+        if ($this->info->conditions->refund_before_departure === true) {
+            $order_info = $order_info . 'Refund before departure: <u>Yes</u>';
+        } else {
+            $order_info = $order_info . 'Refund before departure: <u>No</u>';
+        }
+        $order_info = $order_info . '</div><div>';
+        if ($this->info->conditions->change_before_departure === true) {
+            $order_info = $order_info . 'Change before departure: <u>Yes</u>';
+        } else {
+            $order_info = $order_info . 'Change before departure: <u>No</u>';
+        }
+        $order_info = $order_info . '</div></div>';
+        // ---
+        $i = 0;
+        while($i < count($this->info->slices)) {
+            $slice = $this->info->slices[$i];
+            $slice_conditions = $slice['slice_conditions'];
+            $segment_info = $slice['segment_info'];
+            
+            $j = 0;
+            while($j < count($segment_info)) {
+                $flight = $segment_info[$j];
+                $origin = $flight['origin'];
+                $dest = $flight['destination'];   
+                // TODO: ADD FLIGHTS INFO
+                // var_dump($origin);
+                // var_dump($dest);
+                $j += 1;
+            }
+            $i += 1;
+        }
+        return $order_info;
     }
 
     public function print_html() {
@@ -508,9 +571,7 @@ class Order {
         $order_cancel_msg = $order_cancel_msg . '</div></div>';
         $code = $code . $order_cancel_msg;
 
-        $order_info = '<div id=\''.$this->order_id.'_info\' class=\'order_info\' style=\'display: none;\'>'; 
-        $order_info = $order_info . 'Testing order info'; // TODO!
-        $order_info = $order_info . '</div>';
+        $order_info = $this->get_order_info_html();
         $code = $code . $order_info;
         $code = $code . '"; }); </script>';
         echo $code;

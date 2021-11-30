@@ -144,7 +144,7 @@ class Offer
                 $flight_duration = $this->get_flight_duration($this->departing_at[0], $this->arriving_at[0]);
 
                 echo
-                '<link rel="stylesheet" href="./style_results.css">
+                '<link rel="stylesheet" href="./style/style_results.css">
                 <script>
                         document.addEventListener("DOMContentLoaded", function(event) {
                             document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\''.$opt.'><div class=\'flightNo infoDiv\'>' . $airline . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[0] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[0] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div id=\'payment-container\' class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'>'.$baggage_html.'</div></form></div>";
@@ -159,7 +159,7 @@ class Offer
                 $middle_flights_scripts = $this->get_intermediate_flights_scripts($flight_tag);
 
                 echo
-                '<link rel="stylesheet" href="./style_results.css">
+                '<link rel="stylesheet" href="./style/style_results.css">
                 <script>
                         function showDiv' . $div_id . '() {
                             let elem = document.getElementById("subflight' . $div_id . '");
