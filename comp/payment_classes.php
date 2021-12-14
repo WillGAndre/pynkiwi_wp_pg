@@ -464,10 +464,13 @@ class Order {
         );
     }
 
-    public function get_order_info_html() { // TODO: Add slices info ($this->info->slices)
+    public function get_order_info_html() { // TODO: Improve overall
+        // $html = file_get_contents(plugin_dir_url(__FILE__) . 'html/order_info.html');
+        // var_dump($html);
         $pass_history = array();
-        $order_info = '<div id=\''.$this->order_id.'_info\' class=\'order_info\' style=\'display: none;\'>'; 
-        $order_info = $order_info . '<div>Synced at: '.$this->info->synced_at.'</div>';
+        $order_info = '<div id=\''.$this->order_id.'_info\' class=\'order_info\' style=\'display: none; min-width: max-content;\'>';
+        $order_info = $order_info . '<div class=\'contact\'>';
+        $order_info = $order_info . '<div style=\'white-space: nowrap;\'>Synced at: '.$this->info->synced_at.'</div>';
         $order_info = $order_info . '<div>Passengers: ';
         $i = 0;
         while($i < count($this->info->passengers)) {
@@ -498,20 +501,23 @@ class Order {
         }
         $order_info = $order_info .'</div>';
         // ---
-        $order_info = $order_info . '<div>Conditions: <div>';
-        if ($this->info->conditions->refund_before_departure === true) {
-            $order_info = $order_info . 'Refund before departure: <u>Yes</u>';
+        $order_info = $order_info . '<div><u>Conditions:</u> <div style=\'white-space: nowrap;\'>';
+        if ($this->info->conditions->refund_before_departure->allowed === true) {
+            $ref_bf_dep = $this->info->conditions->refund_before_departure;
+            $order_info = $order_info . 'Refund before departure: '.$ref_bf_dep->penalty_amount.' '.$ref_bf_dep->penalty_currency.'';
         } else {
             $order_info = $order_info . 'Refund before departure: <u>No</u>';
         }
-        $order_info = $order_info . '</div><div>';
-        if ($this->info->conditions->change_before_departure === true) {
-            $order_info = $order_info . 'Change before departure: <u>Yes</u>';
+        $order_info = $order_info . '</div><div style=\'white-space: nowrap;\'>';
+        if ($this->info->conditions->change_before_departure->allowed === true) {
+            $chg_bf_dep = $this->info->conditions->change_before_departure;
+            $order_info = $order_info . 'Change before departure: '.$chg_bf_dep->penalty_amount.' '.$chg_bf_dep->penalty_currency.'';
         } else {
             $order_info = $order_info . 'Change before departure: <u>No</u>';
         }
-        $order_info = $order_info . '</div></div>';
+        $order_info = $order_info . '</div></div></div>';
         // ---
+        $order_info = $order_info . '<div class=\'contact\' style=\'margin-left: 5%;\'>';
         $i = 0;
         while($i < count($this->info->slices)) {
             $slice = $this->info->slices[$i];
@@ -523,13 +529,17 @@ class Order {
                 $flight = $segment_info[$j];
                 $origin = $flight['origin'];
                 $dest = $flight['destination'];   
-                // TODO: ADD FLIGHTS INFO
-                // var_dump($origin);
-                // var_dump($dest);
+                $order_info = $order_info . '<div>Flight '.($i+1).':</div><div>Origin: '.$origin.'</div><div>Destination: '.$dest.'</div>';
                 $j += 1;
             }
+            if ($slice_conditions->change_before_departure->allowed === true) {
+                $chg_bf_dep = $slice_conditions->change_before_departure;
+                $order_info = $order_info . '<div>Change before departure: '.$chg_bf_dep->penalty_amount.' '.$chg_bf_dep->penalty_currency.'</div>';
+            }
+
             $i += 1;
         }
+        $order_info = $order_info . '</div>';
         return $order_info;
     }
 

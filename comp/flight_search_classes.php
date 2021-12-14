@@ -110,12 +110,20 @@ class Offer
                 $init_script = $init_script . 'document.getElementById("sub_flights").style.display = "none"; ';
             } else {    // TODO: Refactor code (Instead of printing index 0 and then using while, set index to 0).
                 // subtrip
+                // $sub_flights_html = file_get_contents(plugin_dir_url(__FILE__) . 'html/sub_flight_info.html');
                 $index = 1;
                 $sub_flights_code = 'document.getElementById("sub_flights").onclick = function(event) { ';
                 while ($index < $trips) {
                     $depart_date_string = substr($this->departing_at[$index], 0, 10) . "  " . substr($this->departing_at[$index], 11, 5);
                     $arrive_date_string = substr($this->arriving_at[$index], 0, 10) . "  " . substr($this->arriving_at[$index], 11, 5);
                     $flight_duration = $this->get_flight_duration($depart_date_string, $arrive_date_string);
+                    // ---
+                    // $info_to_add = array($index, $this->source_iata_code[$index], $this->destination_iata_code[$index], 
+                    //     $depart_date_string, $arrive_date_string, $flight_duration);
+                    // $info_to_replace = array('[FLIGHT_INDEX]', '[SOURCE_IATA_CODE]', '[DESTINATION_IATA_CODE]',
+                    //     '[DEPARTURE_DATE]', '[ARRIVAL_DATE]', '[FLIGHT_DURATION]');
+                    // $sub_flights_html = str_replace($info_to_replace, $info_to_add, $sub_flights_html);
+                    // ---
                     $init_script = $init_script . 'document.getElementById("flight_info").innerHTML += "<div id=\'flight_' . $index . '\' class=\'flight_info_content\'><div class=\'entry top\'><div class=\'title\'>Source:</div><div id=\'entry-source\' class=\'text imp\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Destination:</div><div id=\'entry-dest\' class=\'text imp\'>' . $this->destination_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Dep Date:</div><div id=\'entry-dep_date\' class=\'text imp\'>' . $depart_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Arr Date:</div><div id=\'entry-arr_date\' class=\'text imp\'>' . $arrive_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Flight time:</div><div id=\'entry-flight_time\' class=\'text imp\'>' . $flight_duration . '</div></div></div>"; document.getElementById("flight_' . $index . '").style.display = "none"; ';
                     $sub_flights_code = $sub_flights_code . 'document.getElementById("flight_' . $index . '").style.display = "flex"; ';
                     $index++;
@@ -142,12 +150,24 @@ class Offer
                 $airline = $this->get_airlines_div($this->airline);
                 $departing_time = substr($this->departing_at[0], 11, 5);
                 $flight_duration = $this->get_flight_duration($this->departing_at[0], $this->arriving_at[0]);
+                
+                // --- TODO: ADD TO REST OF HTML
+                $info_to_add = array($opt, $airline, $this->source_iata_code[0],
+                    $flight_duration, $this->destination_iata_code[0], $departing_time,
+                    $this->flight_class, $this->flight_price, $this->offer_id, $baggage_html);
+                $info_to_replace = array(
+                    '[OPT]', '[AIRLINE]', '[SOURCE_IATA_CODE]', '[FLIGHT_DURATION]',
+                    '[DESTINATION_IATA_CODE]', '[DEPARTING_TIME]', '[SEAT_CLASS]',
+                    '[FLIGHT_PRICE]', '[OFFER_ID]', '[BAGGAGE_HTML]');
+                $html_parser = new HTML_PARSER('one_way_flight.html', $info_to_replace, $info_to_add);
+                $one_way_html = $html_parser->parse();
+                // ---
 
                 echo
                 '<link rel="stylesheet" href="./style/style_results.css">
                 <script>
                         document.addEventListener("DOMContentLoaded", function(event) {
-                            document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\''.$opt.'><div class=\'flightNo infoDiv\'>' . $airline . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[0] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[0] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div id=\'payment-container\' class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'>'.$baggage_html.'</div></form></div>";
+                            document.getElementById("flightResults").innerHTML += "'.$one_way_html.'"
                         });
                 </script>';
             } else {    // Multiple trips and return flights (TODO: Integrate Multi trip flights).

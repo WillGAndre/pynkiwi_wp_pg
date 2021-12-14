@@ -4,6 +4,34 @@
 // ###### Auxilary ######
 
 /**
+ * Class used to parse html
+ * code as string which is 
+ * used in conjuncture with js.
+ * All whitespaces are
+ * replaced with a single ' ' 
+ * and " or ' are replaced with \\'.
+ */
+class HTML_PARSER {
+    private $file_name;
+    private $args_to_replace;
+    private $args_to_add;
+
+    public function __construct($file_name, $args_to_replace, $args_to_add) {
+        $this->file_name = $file_name;
+        $this->args_to_add = $args_to_add;
+        $this->args_to_replace = $args_to_replace;
+    }
+
+    public function parse() {
+        $html = file_get_contents(plugin_dir_url(__FILE__) . '/html/' . $this->file_name);
+        $html = str_replace($this->args_to_replace, $this->args_to_add, $html);
+        $html = preg_replace('/\s+/',' ',$html);
+        $html = preg_replace(array('/"/', '/\'/'), '\'', $html);
+        return $html;
+    }
+}
+
+/**
  * Class used to send
  * curl request to Duffel,
  * header and body vary depending
