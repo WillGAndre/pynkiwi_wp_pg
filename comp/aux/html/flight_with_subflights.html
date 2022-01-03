@@ -1,0 +1,37 @@
+<div class='flightResult vcenter' [OPT]>
+    <div id='airlines' class='flightNo infoDiv'>[AIRLINES]</div>
+    <div class='flightDisplay vcenter'>
+        <div class='location infoDiv'>
+            <div class='label'>SOURCE</div>
+            <div class='value'>[IATA_FROM]</div>
+        </div>
+        <div class='timeline'>
+            <div class='symbol center'>
+                <img src='https://i.imgrpost.com/imgr/2018/09/08/airplane.png' alt='airplane.png' border='0' />
+            </div>
+            <div class='center'>
+                <input class='flightsBt' type='button' name='answer' value='Show Flights' onclick='showDiv[DIV_ID]()'/>
+            </div>
+        </div>
+        <div class='location infoDiv'>
+            <div class='label'>DESTINATION</div>
+            <div class='value'>[IATA_TO]</div>
+        </div>
+    </div>
+    <div class='flightInfo infoDiv'>
+        <div class='label'>FLIGHT TIME</div>
+        <div class='value'>[DEPARTING_TIME]</div>
+        <div class='label'>SEAT CLASS</div>
+        <div class='value'>[SEAT_CLASS]</div>
+    </div>
+    <form method='post'>
+        <div id='payment-container' class='flightInfo infoDiv'>
+            <input type='submit' class='flight-price' name='flight-price' value='[FLIGHT_PRICE]' style='background: #5B2A4C;'/>
+            <input type='hidden' name='offer_submit' value='[OFFER_ID]'>
+            [BAGGAGE_HTML]
+        </div>
+    </form>
+</div>
+<div id='subflight[DIV_ID]' class='flightResults' style='display:none; margin-left: 2.6em; width: -moz-fit-content; width: fit-content;'>
+    [MIDDLE_FLIGHTS]
+</div>

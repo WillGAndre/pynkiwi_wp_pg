@@ -64,13 +64,17 @@ if ($_POST['submit-search'] === "SEARCH FLIGHTS") {
     foreach ($offers as $index => $offer) {
         if ($airline_name === "None" || $offer->compare_airline($airline_name)) {
             // console_log("Input airline name: " . $airline_name);
-            if (count($hashmap_offers) >= MAX_OFFERS_PER_PAGE) {
-                $offer->print_html(0, 1);
-            } else {
-                $offer->print_html(0, 0);
+
+            $offer_id = $offer->get_offer_id();
+            if (!array_key_exists($offer_id, $hashmap_offers)) {
+                $hashmap_offers[$offer_id] = $offer;
             }
-            
-            $hashmap_offers[$offer->get_offer_id()] = $offer;
+
+            if (count($hashmap_offers) > MAX_OFFERS_PER_PAGE) {
+                $offer->print_html(1);
+            } else {
+                $offer->print_html(0);
+            }
         }
     }
     //$offers[0]->debug_baggage();
