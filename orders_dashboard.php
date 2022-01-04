@@ -37,7 +37,7 @@ if (isset($_GET['show_orders'])) {
     // debug
     // imp
     $orders->debug_get_orders();
-    $orders->delete_orders();
+    // $orders->delete_orders();
 }
 
 /**
@@ -76,20 +76,21 @@ if (isset($_GET['action_type'])) {
         if ($resp_data !== null) {
             add_action(
                 'init',
-                function() use ($order_id, $resp_data) {
+                function() use ($order_id, $resp_data, $total_amount) {
                     $current_user = wp_get_current_user();
                     $user_id = $current_user->ID;
                     $orders = new Orders($user_id);
                     $orders->update_order_payment_meta($order_id, $resp_data->created_at, $resp_data->id);
                     $orders->update_order_stripe_payment_meta($order_id);
                     $orders->debug_get_orders_meta();
+                    $orders->add_pending_order($order_id, $total_amount[0] . ' ' . $total_amount[1], 0);
                 }
             );
             $stripe_total_amount = $total_amount[0] + ($total_amount[0] * 0.15);
             $stripe_total_amount_str = $stripe_total_amount . ' ' . $total_amount[1];
             header('Location: https://pynkiwi.com/?' . http_build_query(array(
                 'page_id' => 3721,
-                'order_id' => $order_id,
+                'offer_id' => $order_id,
                 'stripe_total_amount' => $stripe_total_amount_str
             )));
         }

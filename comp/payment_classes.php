@@ -342,6 +342,7 @@ class Orders {
 
     public function show_orders_meta() {
         $arr = get_user_meta($this->user_id, $this->wp_key, true);
+        // echo $arr;
         $order_count = count($arr);
         if ($order_count && !($order_count === 1 && $arr[0] === "")) {
             $index = 0;
@@ -386,8 +387,8 @@ class Orders {
      * to the user meta just before being prompted
      * for payment (stripe).
      */
-    public function add_pending_order($offer_id, $duffel_total_amount) {
-        $user_meta_update = update_user_meta($this->user_id, $this->wp_key_pen_ords, [$offer_id, $duffel_total_amount]);
+    public function add_pending_order($offer_id, $duffel_total_amount, $payment_flag) {
+        $user_meta_update = update_user_meta($this->user_id, $this->wp_key_pen_ords, [$offer_id, $duffel_total_amount, $payment_flag]);
         if (is_int($user_meta_update)) {
             console_log('\t- WP Key Pen Ords doesnt exist');
         } else if ($user_meta_update === false) {
