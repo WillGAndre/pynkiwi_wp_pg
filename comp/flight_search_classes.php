@@ -178,6 +178,17 @@ class Offer
         }
     }
 
+    public function print_current_offer_html()
+    {
+        $trips = count($this->source_iata_code);
+        $script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
+        if ($trips === 1) {
+            // one way
+        } else {
+            
+        }
+    }
+
     // Func. to compare $input_airline with airlines (private class array). 
     public function compare_airline($input_airline) 
     {

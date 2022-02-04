@@ -7,6 +7,13 @@ if (isset($_POST['flight-price'])) {
     add_action('init', 'check_user');
 }
 
+/*
+    TODO: 
+        Convert user_id to md5 hash with secret salt,
+        automatically check user perms before allowing action.
+    (https://stackoverflow.com/a/11642824)
+*/
+
 /**
  * Checks if user is logged in, if so,
  * the user is redirected to his account
@@ -56,7 +63,7 @@ if (isset($_GET['up_offer_id'])) {
     $single_offer = new Single_Offer($offer_id, $user_id);
     $single_offer->get_single_offer();
     // ---
-    $single_offer->print_single_offer_html();
+    $single_offer->print_single_offer_html(); // TODO: UPDATE PRINT FUNCTION
     $single_offer->print_single_offer_opts_html();
     // ---
     $single_offer->print_user();
