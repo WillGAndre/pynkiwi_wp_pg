@@ -5,5 +5,4 @@ Abs: Plug-in to support communication between WordPress and Duffel's Flights API
      Allows for searching flights, selecting offers and placing your flight order,
      payment support was also added (WordPress). Also includes dashboard for searching
      flights, purchasing offer and purchased orders, as well as mySQL db support.
-	
-	
+     
