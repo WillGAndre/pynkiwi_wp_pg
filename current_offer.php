@@ -7,6 +7,13 @@ if (isset($_POST['flight-price'])) {
     add_action('init', 'check_user');
 }
 
+/*
+    TODO: 
+        Convert user_id to md5 hash with secret salt,
+        automatically check user perms before allowing action.
+    (https://stackoverflow.com/a/11642824)
+*/
+
 /**
  * Checks if user is logged in, if so,
  * the user is redirected to his account
@@ -15,7 +22,7 @@ if (isset($_POST['flight-price'])) {
  * and pay. The redirect url is sent with the
  * offer_id and the current user id.
  */
-function check_user() {
+function check_user() { // TODO: Remove user_id from query arg (insecure)
     if (is_user_logged_in()) :
         console_log('user logged in');
         $current_user = wp_get_current_user();
@@ -25,12 +32,23 @@ function check_user() {
             'up_offer_id' => $_POST['offer_submit'],
             'user_id' => $current_user_id
         )));
-    else : // TODO: !
+    else :
         header('Location: https://pynkiwi.com/?page_id=2478');
         console_log('user not logged in');
     endif;
 }
 
+if (isset($_GET['page_id']) && $_GET['page_id'] === "2478") {
+    echo '<script>
+        document.addEventListener("DOMContentLoaded", function(event) {
+            document.querySelector(\'.register\').addEventListener("submit", function(event) {
+                if (document.getElementById(\'ur-submit-message-node\') != null) {
+                    javascript:history.go(-1);
+                }
+            }) 
+        });
+    </script>';
+}
 
 // Trigger -> onclick of offer price button (redirect to account)
 /**
@@ -45,7 +63,7 @@ if (isset($_GET['up_offer_id'])) {
     $single_offer = new Single_Offer($offer_id, $user_id);
     $single_offer->get_single_offer();
     // ---
-    $single_offer->print_single_offer_html();
+    $single_offer->print_single_offer_html(); // TODO: UPDATE PRINT FUNCTION
     $single_offer->print_single_offer_opts_html();
     // ---
     $single_offer->print_user();
@@ -64,7 +82,8 @@ function show_current_offer($offer_id) { // TODO: Make current offer tab respons
  * When selectiong current offer for payment, user
  * is redirected. Depending on payment selected
  * (if option is available) user will prompted
- * for payment or "hold" order is created.
+ * for payment or "hold" order is created. Notice that:
+ * ONLY ORDERS THAT ARE PAID INSTANTLY ARE ADDED TO THE DB.
  */
 if (isset($_GET['pay_offer_id']) && $_GET['page_id'] === '3294') { 
     $user_id = $_GET['user_id'];
@@ -76,10 +95,10 @@ if (isset($_GET['pay_offer_id']) && $_GET['page_id'] === '3294') {
     $pay_type = $_GET['type'];
 
     if ($pay_type === "instant") {
-        insert_off_info($offer_id, $passengers, $services);
+        insert_off_info($offer_id, $passengers, $services); // TODO: Move this to after stripe payment (check checkout page id)
         add_action('init', function () use ($user_id, $offer_id, $duffel_total_amount) {
             $orders = new Orders($user_id);
-            $orders->add_pending_order($offer_id, $duffel_total_amount);
+            $orders->add_pending_order($offer_id, $duffel_total_amount, 1);
         });
         header('Location: https://pynkiwi.com/?' . http_build_query(array(
             'page_id' => 3721,
@@ -160,12 +179,14 @@ if (isset($_GET['page_id']) && $_GET['page_id'] === '3640') {
             $offer_payment_info = $orders->get_pending_order();
             $offer_id = $offer_payment_info[0];
             $offer_duffel_amount = $offer_payment_info[1];
+            $duffel_payment_flag = $offer_payment_info[2];
 
             if ($offer_id !== -1) {
                 $offer_info = get_off_info($offer_id); //stdClass
                 if ($offer_info === null) {
                     console_log('Failed to get offer passenger information');
-                } else {
+                    return null;
+                } else if ($duffel_payment_flag === 1) {
                     $payments = array();
                     $payment = new stdClass();
                     $payment->type = "balance";
@@ -185,6 +206,8 @@ if (isset($_GET['page_id']) && $_GET['page_id'] === '3640') {
                     $orders->add_pending_order_meta($order);       
                     $orders->debug_get_orders();   
                 }
+                $stripe_amount = $offer_duffel_amount[0] + ($offer_duffel_amount[0] * 0.15);
+                insert_payment_info($offer_id, $user_id, $offer_duffel_amount[0], $stripe_amount);
             } else {
                 console_log('Failed to get pending order');
             }

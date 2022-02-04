@@ -38,6 +38,37 @@ function pass_info_db_install() {
 }
 add_action('init', 'pass_info_db_install');
 
+function payment_info_db_install() {
+    global $wpdb;
+    global $payment_info_db_version;
+    $charset_collate = $wpdb->get_charset_collate();
+    $sql = "CREATE TABLE IF NOT EXISTS "."payment_info"." (
+        Off_ID TEXT NOT NULL,
+        User_ID TEXT NOT NULL,
+        DuffelAmount TEXT NOT NULL,
+        StripeAmount TEXT NOT NULL,
+        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) $charset_collate;";
+    require_once(ABSPATH . '/wp-admin/includes/upgrade.php');
+    dbDelta($sql);
+    add_option('payment_info_db_version', $payment_info_db_version);   
+}
+add_action('init', 'payment_info_db_install');
+
+function insert_payment_info($offer_id, $user_id, $duffel_amount, $stripe_amount) {
+    global $wpdb;
+    $data = array(
+        'Off_ID' => $offer_id,
+        'User_ID' => $user_id,
+        'DuffelAmount' => $duffel_amount,
+        'StripeAmount' => $stripe_amount
+    );
+    $status = $wpdb->insert(
+        'payment_info',
+        $data
+    );
+    console_log('Database update status: {'.$status.'}');
+}
 
 function insert_off_info($offer_id, $passengers, $services) {
     $services_index = 0;

@@ -87,7 +87,7 @@ class Offer
      *      0 --> print offer 
      *      1 --> print offer but hide the contents (display: none).
      */
-    public function print_html($single_offer, $hide_offer)
+    public function print_html($hide_offer)
     {
         $trips = count($this->source_iata_code);
         if ($this->flight_class == "premium_economy") {
@@ -100,84 +100,93 @@ class Offer
             $this->flight_class = "Business";
         }
 
-        if ($single_offer):
-            console_log('[*] Printing Single Offer | Offer ttl: ' . $this->ttl);
+        $opt = '';
+        if ($hide_offer) {
+            $opt = " style=\'display:none;\' ";
+            console_log('[*] Offer from: ' . IATA_FROM . '  to  ' . IATA_TO . ' | Offer ttl: ' . $this->ttl);
+        } else {
+            console_log('[*] Printing offer from: ' . IATA_FROM . '  to  ' . IATA_TO . ' | Offer ttl: ' . $this->ttl);
+        }
+            
+        $baggage_html = $this->check_baggage_per_slice(0);
+        if ($trips === 1) { // One-way
+            $airline = $this->get_airlines_div($this->airline);
+            $departing_time = substr($this->departing_at[0], 11, 5);
+            $flight_duration = $this->get_flight_duration($this->departing_at[0], $this->arriving_at[0]);
+            $html_parser = new HTML_PARSER(
+                'flight_with_no_subflights.html', 
+                array(
+                    '[OPT]', '[AIRLINE]', '[SOURCE_IATA_CODE]', '[FLIGHT_DURATION]',
+                    '[DESTINATION_IATA_CODE]', '[DEPARTING_TIME]', '[SEAT_CLASS]',
+                    '[FLIGHT_PRICE]', '[OFFER_ID]', '[BAGGAGE_HTML]'
+                ), 
+                array(
+                    $opt, $airline, $this->source_iata_code[0],
+                    $flight_duration, $this->destination_iata_code[0], $departing_time,
+                    $this->flight_class, $this->flight_price, $this->offer_id, $baggage_html
+                )
+            );
 
-            $baggage_html = $this->check_baggage_per_slice(1);
-            $init_script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ' . $baggage_html;
+            echo
+            '<link rel="stylesheet" href="./style/style_results.css">
+            <script>
+                    document.addEventListener("DOMContentLoaded", function(event) {
+                        document.getElementById("flightResults").innerHTML += "'.$html_parser->parse().'"
+                    });
+            </script>';
+        } else {    // Multiple trips and return flights (TODO: Integrate Multi trip flights).
+            $div_id = rand();
+            $flight_tag = rand();
+            $departing_time = substr($this->departing_at[0], 11, 5);
+            $airlines = $this->get_airlines_div(array_unique($this->airline));
+            $middle_flights = $this->get_intermediate_flights($flight_tag);
+            $middle_flights_scripts = $this->get_intermediate_flights_scripts($flight_tag);
+            $html_parser = new HTML_PARSER(
+                'flight_with_subflights.html',
+                array(
+                    '[OPT]', '[AIRLINES]', '[IATA_FROM]', '[DIV_ID]',
+                    '[IATA_TO]', '[DEPARTING_TIME]', '[SEAT_CLASS]',
+                    '[FLIGHT_PRICE]', '[OFFER_ID]', '[BAGGAGE_HTML]',
+                    '[MIDDLE_FLIGHTS]'
+                ),
+                array(
+                    $opt, $airlines, IATA_FROM, $div_id, 
+                    IATA_TO, $departing_time, $this->flight_class, 
+                    $this->flight_price, $this->offer_id, $baggage_html,
+                    $middle_flights
+                )
+            );
 
-            if ($trips === 1) {
-                $init_script = $init_script . 'document.getElementById("sub_flights").style.display = "none"; ';
-            } else {    // TODO: Refactor code (Instead of printing index 0 and then using while, set index to 0).
-                // subtrip
-                $index = 1;
-                $sub_flights_code = 'document.getElementById("sub_flights").onclick = function(event) { ';
-                while ($index < $trips) {
-                    $depart_date_string = substr($this->departing_at[$index], 0, 10) . "  " . substr($this->departing_at[$index], 11, 5);
-                    $arrive_date_string = substr($this->arriving_at[$index], 0, 10) . "  " . substr($this->arriving_at[$index], 11, 5);
-                    $flight_duration = $this->get_flight_duration($depart_date_string, $arrive_date_string);
-                    $init_script = $init_script . 'document.getElementById("flight_info").innerHTML += "<div id=\'flight_' . $index . '\' class=\'flight_info_content\'><div class=\'entry top\'><div class=\'title\'>Source:</div><div id=\'entry-source\' class=\'text imp\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Destination:</div><div id=\'entry-dest\' class=\'text imp\'>' . $this->destination_iata_code[$index] . '</div></div><div class=\'entry top\'><div class=\'title\'>Dep Date:</div><div id=\'entry-dep_date\' class=\'text imp\'>' . $depart_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Arr Date:</div><div id=\'entry-arr_date\' class=\'text imp\'>' . $arrive_date_string . '</div></div><div class=\'entry top\'><div class=\'title\'>Flight time:</div><div id=\'entry-flight_time\' class=\'text imp\'>' . $flight_duration . '</div></div></div>"; document.getElementById("flight_' . $index . '").style.display = "none"; ';
-                    $sub_flights_code = $sub_flights_code . 'document.getElementById("flight_' . $index . '").style.display = "flex"; ';
-                    $index++;
+            echo
+            '<link rel="stylesheet" href="./style/style_results.css">
+            <script>
+                function showDiv' . $div_id . '() {
+                    let elem = document.getElementById("subflight' . $div_id . '");
+                    elem.style.display == "block" ? elem.style.display = "none" : elem.style.display = "block"; 
                 }
-                $sub_flights_code = $sub_flights_code . 'document.getElementById("sub_flights").style.display = "none"; }; ';
-                $init_script = $init_script . $sub_flights_code;
-            }
 
-            $depart_date_string = substr($this->departing_at[0], 0, 10) . "  " . substr($this->departing_at[0], 11, 5);
-            $arrive_date_string = substr($this->arriving_at[0], 0, 10) . "  " . substr($this->arriving_at[0], 11, 5);
-            $flight_duration = $this->get_flight_duration($depart_date_string, $arrive_date_string);
+                ' . $middle_flights_scripts . '
 
-            echo $init_script . 'document.getElementById("entry-source").innerHTML += "' . $this->source_iata_code[0] . '"; document.getElementById("entry-dest").innerHTML += "' . $this->destination_iata_code[0] . '"; document.getElementById("entry-dep_date").innerHTML += "' . $depart_date_string . '"; document.getElementById("entry-arr_date").innerHTML += "' . $arrive_date_string . '"; document.getElementById("entry-flight_time").innerHTML += "' . $flight_duration . '"; }); </script>';
-        else:
-            $opt = '';
-            if ($hide_offer) {
-                $opt = " style=\'display:none;\' ";
-                console_log('[*] Offer from: ' . IATA_FROM . '  to  ' . IATA_TO . ' | Offer ttl: ' . $this->ttl);
-            } else {
-                console_log('[*] Printing offer from: ' . IATA_FROM . '  to  ' . IATA_TO . ' | Offer ttl: ' . $this->ttl);
-            }
-            $baggage_html = $this->check_baggage_per_slice(0);
-            if ($trips === 1) { // One-way
-                $airline = $this->get_airlines_div($this->airline);
-                $departing_time = substr($this->departing_at[0], 11, 5);
-                $flight_duration = $this->get_flight_duration($this->departing_at[0], $this->arriving_at[0]);
+                document.addEventListener("DOMContentLoaded", function(event) {
+                    document.getElementById("flightResults").innerHTML += "'.$html_parser->parse().'";
+                });
+            </script>';
+            /*
+                console.log(document.getElementById("flightResults"));
+                console.log(document.getElementById("subflight' . $div_id . '"));
+            */
+        }
+    }
 
-                echo
-                '<link rel="stylesheet" href="./style_results.css">
-                <script>
-                        document.addEventListener("DOMContentLoaded", function(event) {
-                            document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\''.$opt.'><div class=\'flightNo infoDiv\'>' . $airline . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[0] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[0] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div id=\'payment-container\' class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'>'.$baggage_html.'</div></form></div>";
-                        });
-                </script>';
-            } else {    // Multiple trips and return flights (TODO: Integrate Multi trip flights).
-                $div_id = rand();
-                $flight_tag = rand();
-                $departing_time = substr($this->departing_at[0], 11, 5);
-                $airlines = $this->get_airlines_div(array_unique($this->airline));
-                $middle_flights = $this->get_intermediate_flights($flight_tag);
-                $middle_flights_scripts = $this->get_intermediate_flights_scripts($flight_tag);
-
-                echo
-                '<link rel="stylesheet" href="./style_results.css">
-                <script>
-                        function showDiv' . $div_id . '() {
-                            let elem = document.getElementById("subflight' . $div_id . '");
-                            elem.style.display == "block" ? elem.style.display = "none" : elem.style.display = "block"; 
-                        }
-
-                        ' . $middle_flights_scripts . '
-
-                        document.addEventListener("DOMContentLoaded", function(event) {
-                            document.getElementById("flightResults").innerHTML += "<div class=\'flightResult vcenter\''.$opt.'><div id=\'airlines\' class=\'flightNo infoDiv\'>' . $airlines . '</div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . IATA_FROM . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'center\'><input class=\'flightsBt\' type=\'button\' name=\'answer\' value=\'Show Flights\' onclick=\'showDiv' . $div_id . '()\' /></div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . IATA_TO . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div><form method=\'post\'><div id=\'payment-container\' class=\'flightInfo infoDiv\'><input type=\'submit\' class=\'flight-price\' name=\'flight-price\' value=\'' . $this->flight_price . '\' style=\'background: #5B2A4C;\' /><input type=\'hidden\' name=\'offer_submit\' value=\'' . $this->offer_id  . '\'>'.$baggage_html.'</div></form></div><div id=\'subflight' . $div_id . '\' class=\'flightResults\' style=\'display:none; margin-left: 2.6em; width: -moz-fit-content; width: fit-content;\'>' . $middle_flights . '</div>";
-                        });
-                </script>';
-                /*
-                            console.log(document.getElementById("flightResults"));
-                            console.log(document.getElementById("subflight' . $div_id . '"));
-                */
-            }
-        endif;
+    public function print_current_offer_html()
+    {
+        $trips = count($this->source_iata_code);
+        $script = '<script> document.addEventListener("DOMContentLoaded", function(event) { ';
+        if ($trips === 1) {
+            // one way
+        } else {
+            
+        }
     }
 
     // Func. to compare $input_airline with airlines (private class array). 
@@ -303,7 +312,24 @@ class Offer
             $flight_duration = $this->get_flight_duration($this->departing_at[$index], $this->arriving_at[$index]);
             $flight_id = $flight_tag . '_' . $index;
             $flight_info_id = $flight_id . '_c';
-            $div = $div . '<div id=\'flight' . $flight_id . '\' class=\'flightResult vcenter\' style=\'cursor: pointer;\' onclick=\'showDiv' . $flight_id . '()\' ><div class=\'flightNo infoDiv\'><div class=\'value\'>' . $this->airline[$index] . '</div></div><div class=\'flightDisplay vcenter\'><div class=\'location infoDiv\'><div class=\'label\'>SOURCE</div><div class=\'value\'>' . $this->source_iata_code[$index] . '</div></div><div class=\'timeline\'><div class=\'symbol center\'><img src=\'https://i.imgrpost.com/imgr/2018/09/08/airplane.png\' alt=\'airplane.png\' border=\'0\' /></div><div class=\'duration center\'>' . $flight_duration . '</div></div><div class=\'location infoDiv\'><div class=\'label\'>DESTINATION</div><div class=\'value\'>' . $this->destination_iata_code[$index] . '</div></div></div><div class=\'flightInfo infoDiv\'><div class=\'label\'>FLIGHT TIME</div><div class=\'value\'>' . $departing_time . '</div><div class=\'label\'>SEAT CLASS</div><div class=\'value\'>' . $this->flight_class . '</div></div></div><div id=\'flight' . $flight_info_id . '\' class=\'flightResultInfo vcenter\' style=\'display: none; cursor: pointer;\' onclick=\'showDiv' . $flight_info_id . '()\' ><div id=\'set-left\' class=\'flightInfo infoDiv\'><div class=\'labelc\'>DEP. DATE</div><div class=\'valuec\'>' . $departing_date . '</div><div class=\'labelc\'>DEP. TIME</div><div class=\'valuec\'>' . $departing_time . '</div></div><div class=\'location infoDiv\'><div class=\'labelc\'>TERMINAL</div><div class=\'valuec\'>' . $this->source_terminal[$index] . '</div><div class=\'valuec\'>' . $this->source_airport[$index] . '</div></div><div class=\'location infoDiv\'><div class=\'labelc\'>TERMINAL</div><div class=\'valuec\'>' . $this->destination_terminal[$index] . '</div><div class=\'valuec\'>' . $this->destination_airport[$index] . '</div></div><div id=\'set-right\' class=\'flightInfo infoDiv\'><div class=\'labelc\'>ARR. DATE</div><div class=\'valuec\'>' . $arriving_date . '</div><div class=\'labelc\'>ARR. TIME</div><div class=\'valuec\'>' . $arriving_time . '</div></div></div>';
+            $html_parser = new HTML_PARSER(
+                'sub_flight_info.html',
+                array(
+                    '[FLIGHT_ID]', '[AIRLINE]', '[SOURCE_IATA_CODE]',
+                    '[FLIGHT_DURATION]', '[DESTINATION_IATA_CODE]', '[DEPARTING_TIME]',
+                    '[SEAT_CLASS]', '[FLIGHT_INFO_ID]', '[DEPARTING_DATE]', 
+                    '[SOURCE_TERMINAL]', '[SOURCE_AIRPORT]', '[DESTINATION_TERMINAL]', 
+                    '[DESTINATION_AIRPORT]', '[ARRIVAL_DATE]', '[ARRIVAL_TIME]'
+                ),
+                array(
+                    $flight_id, $this->airline[$index], $this->source_iata_code[$index],
+                    $flight_duration, $this->destination_iata_code[$index], $departing_time,
+                    $this->flight_class, $flight_info_id, $departing_date,
+                    $this->source_terminal[$index], $this->source_airport[$index], $this->destination_terminal[$index],
+                    $this->destination_airport[$index], $arriving_date, $arriving_time
+                )
+            );
+            $div = $div . $html_parser->parse();
             $index++;
         }
         return $div;
@@ -379,6 +405,7 @@ class Offer_request
     private $offer_request_id;
     private $offers;
     private const MAX_OFFERS = 50;
+    private const MIN_OFFERS = 5;
 
     public function __construct($slices, $passengers, $cabin_class)
     {
@@ -638,19 +665,22 @@ class Offer_request
     /**
      * Print page count (container --> page_count_index).
      */
-    private function print_num_offers($count_offers) {
-        if ($count_offers > self::MAX_OFFERS) {
+    private function print_num_offers($count_offers) {  // TODO: Fix pagination bug (not showing correctly)
+        if ($count_offers >= self::MAX_OFFERS) {
             $received_offers = $count_offers;
             $count_offers = self::MAX_OFFERS;
             console_log('\t- Offers received: ' . $received_offers . ' | Actual: ' . $count_offers);
         } else {
             console_log('\t- Offers received: ' . $count_offers);
             if ($count_offers === 1) {
-                echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("page_count").innerHTML = "1/'.$count_offers. '"; document.getElementById("page_count_index").style.display = "inline-flex"; }); </script>';
+                echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("page_count").innerHTML = "1/'.$count_offers.'"; document.getElementById("page_count_index").style.display = "inline-flex"; }); </script>';
+                return;
+            } else if ($count_offers < self::MIN_OFFERS) {
+                echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("page_count").innerHTML = "'.$count_offers.'/'.$count_offers.'"; document.getElementById("page_count_index").style.display = "inline-flex"; }); </script>';
                 return;
             }
         }
-        echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("page_count").innerHTML = "5/'.$count_offers. '"; document.getElementById("page_count_index").style.display = "inline-flex"; }); </script>';
+        echo '<script> document.addEventListener("DOMContentLoaded", function(event) { document.getElementById("page_count").innerHTML = "5/'.$count_offers.'"; document.getElementById("page_count_index").style.display = "inline-flex"; }); </script>';
     }
 }
 
@@ -747,5 +777,3 @@ class Passengers
         return $this->age_arr;
     }
 }
-
-?>

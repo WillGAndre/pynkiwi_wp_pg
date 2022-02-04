@@ -1,0 +1,51 @@
+<div id='flight[FLIGHT_ID]' class='flightResult vcenter' style='cursor: pointer;' onclick='showDiv[FLIGHT_ID]()'>
+    <div class='flightNo infoDiv'>
+        <div class='value'>[AIRLINE]</div>
+    </div>
+    <div class='flightDisplay vcenter'>
+        <div class='location infoDiv'>
+            <div class='label'>SOURCE</div>
+            <div class='value'>[SOURCE_IATA_CODE]</div>
+        </div>
+        <div class='timeline'>
+            <div class='symbol center'>
+                <img src='https://i.imgrpost.com/imgr/2018/09/08/airplane.png' alt='airplane.png' border='0' />
+            </div>
+            <div class='duration center'>[FLIGHT_DURATION]</div>
+        </div>
+        <div class='location infoDiv'>
+            <div class='label'>DESTINATION</div>
+            <div class='value'>[DESTINATION_IATA_CODE]</div>
+        </div>
+    </div>
+    <div class='flightInfo infoDiv'>
+        <div class='label'>FLIGHT TIME</div>
+        <div class='value'>[DEPARTING_TIME]</div>
+        <div class='label'>SEAT CLASS</div>
+        <div class='value'>[SEAT_CLASS]</div>
+    </div>
+</div>
+<div id='flight[FLIGHT_INFO_ID]' class='flightResultInfo vcenter' style='display: none; cursor: pointer;' onclick='showDiv[FLIGHT_INFO_ID]()' >
+    <div id='set-left' class='flightInfo infoDiv'>
+        <div class='labelc'>DEP. DATE</div>
+        <div class='valuec'>[DEPARTING_DATE]</div>
+        <div class='labelc'>DEP. TIME</div>
+        <div class='valuec'>[DEPARTING_TIME]</div>
+    </div>
+    <div class='location infoDiv'>
+        <div class='labelc'>TERMINAL</div>
+        <div class='valuec'>[SOURCE_TERMINAL]</div>
+        <div class='valuec'>[SOURCE_AIRPORT]</div>
+    </div>
+    <div class='location infoDiv'>
+        <div class='labelc'>TERMINAL</div>
+        <div class='valuec'>[DESTINATION_TERMINAL]</div>
+        <div class='valuec'>[DESTINATION_AIRPORT]</div>
+    </div>
+    <div id='set-right' class='flightInfo infoDiv'>
+        <div class='labelc'>ARR. DATE</div>
+        <div class='valuec'>[ARRIVAL_DATE]</div>
+        <div class='labelc'>ARR. TIME</div>
+        <div class='valuec'>[ARRIVAL_TIME]</div>
+    </div>
+</div>

@@ -254,7 +254,7 @@ class Single_Offer
     }
 
     public function print_single_offer_html() {
-        return $this->offer->print_html(1,0);
+        //return $this->offer->print_html(1,0); // print_current_offer_html()
     }
 
     public function print_single_offer_opts_html() {

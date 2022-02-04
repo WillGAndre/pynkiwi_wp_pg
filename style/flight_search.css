@@ -8,7 +8,7 @@
 #search-form {
   width: 65%;
   position: relative;
-  background-color: rgba(#5C2C4C, 0.5);
+  background-color: rgba(#8a5d7b, 0.5);
 }
 
 .flight {
@@ -29,7 +29,7 @@
 }
 .info-box label {
   display: block;
-  color: #FFFFFF;
+  color: #5C2C4C;
   font-size: .9em;
 }
 .info-box > button {
@@ -39,7 +39,7 @@
 }
 
 .info-box input[type=text], input[type=submit], input[type=date], select {
-  border: none;
+  /* border: none; */
   outline: none;
   background: #f6eded;
   margin-top: 5px;
@@ -47,6 +47,7 @@
   padding: 5px;
   height: 30px;
   border-radius: 3px;
+  border-color: #5C2C4C;
 }
 
 #info-box-calender {
@@ -107,7 +108,7 @@ input[type=date] {
 }
 
 #flight-search input[type=submit] {
-  background: #5b2a4d;
+  background: #8a5d7b;
   color: white;
   padding: 0;
   height: 30px;
@@ -137,7 +138,7 @@ input[type=date] {
     }
     &.outline:hover {
         color: white;
-        background: #5b2a4d;
+        background: #8a5d7b;
         border-color: white;
         transition: all 0.2s linear;
     }
@@ -152,7 +153,7 @@ input[type=date] {
     }
     &.purple-white:hover {
         color: white;
-        background: #5b2a4d;
-        border-color: #5b2a4d;
+        background: #8a5d7b;
+        border-color: #8a5d7b;
     }
 }
